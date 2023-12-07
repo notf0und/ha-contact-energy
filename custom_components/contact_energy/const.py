@@ -6,6 +6,9 @@ SENSOR_PRICES_NAME = "Contact Energy Prices"
 
 DOMAIN = "contact_energy"
 
+CONF_ACCOUNT_ID = "account_id"
+CONF_CONTRACT_ID = "contract_id"
+CONF_CONTRACT_ICP = "contract_icp"
 CONF_PRICES = "prices"
 CONF_USAGE = "usage"
 CONF_SOLD = "sold"

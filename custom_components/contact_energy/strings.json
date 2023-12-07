@@ -1,0 +1,30 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Contact Energy",
+          "description": "Set up your Contact Energy account",
+          "data": {
+            "email": "Email",
+            "password": "Password"
+          }
+        },
+        "reauth_confirm": {
+          "title": "Reauthenticate Contact Energy",
+          "description": "Your Contact Energy credentials have become invalid. Please enter your password to reauthenticate.",
+          "data": {
+            "email": "Email",
+            "password": "Password"
+          }
+        }
+      },
+      "error": {
+        "invalid_auth": "Invalid email or password",
+        "cannot_connect": "Failed to connect to Contact Energy. Please check your internet connection and try again.",
+        "unknown": "Unexpected error occurred. Please check the Home Assistant logs for more details."
+      },
+      "abort": {
+        "reauth_successful": "Reauthentication successful"
+      }
+    }
+  }

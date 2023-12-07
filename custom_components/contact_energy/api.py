@@ -1,119 +1,142 @@
-"""Contact Energy API."""
-
+"""Contact Energy API client."""
+import asyncio
 import logging
-import requests
+from typing import Any, Optional
+import aiohttp
+import async_timeout
+
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class ContactEnergyApi:
-    """Class for Contact Energy API."""
+    """Async Contact Energy API client."""
 
-    def __init__(self, email, password):
-        """Initialise Contact Energy API."""
+    def __init__(self, hass: HomeAssistant, email: str, password: str, account_id: str = None, contract_id: str = None):
+        """Initialize the API."""
         self._api_token = ""
-        self._api_session = ""
-        self._contractId = ""
-        self._accountId = ""
+        self._contractId = contract_id
+        self._accountId = account_id
         self._url_base = "https://api.contact-digital-prod.net"
         self._api_key = "z840P4lQCH9TqcjC9L2pP157DZcZJMcr5tVQCvyx"
         self._email = email
         self._password = password
+        self._session = async_get_clientsession(hass)
 
-    def login(self):
+    def _get_headers(self, include_token: bool = True) -> dict:
+        """Get headers for API requests."""
+        headers = {"x-api-key": self._api_key}
+        if include_token and self._api_token:
+            headers["session"] = self._api_token
+        return headers
+
+    async def _async_request(self, method: str, url: str, **kwargs) -> Any:
+        """Make an async request with timeout and error handling."""
+        try:
+            async with async_timeout.timeout(30):
+                async with self._session.request(method, url, **kwargs) as response:
+                    _LOGGER.debug("%s response status: %s", url, response.status)
+                    response_text = await response.text()
+                    _LOGGER.debug("%s response body: %s", url, response_text)
+                    
+                    if response.status == 200:
+                        return await response.json()
+                    elif response.status == 401:
+                        raise InvalidAuth
+                    return None
+                    
+        except asyncio.TimeoutError as error:
+            _LOGGER.error("Timeout during request to %s: %s", url, error)
+            raise CannotConnect from error
+        except aiohttp.ClientError as error:
+            _LOGGER.error("Error connecting to %s: %s", url, error)
+            raise CannotConnect from error
+        except Exception as error:
+            _LOGGER.exception("Unexpected error during request to %s: %s", url, error)
+            raise UnknownError from error
+
+    async def async_login(self) -> bool:
         """Login to the Contact Energy API."""
-        result = False
-        headers = {"x-api-key": self._api_key}
+        _LOGGER.debug("Attempting login for email: %s", self._email)
+        
         data = {"username": self._email, "password": self._password}
-        loginResult = requests.post(
-            self._url_base + "/login/v2", json=data, headers=headers
-        )
-        if loginResult.status_code == requests.codes.ok:
-            jsonResult = loginResult.json()
-            self._api_token = jsonResult["token"]
-            _LOGGER.debug("Logged in")
-            self.refresh_session()
-            result = True
-        else:
-            _LOGGER.error(
-                "Failed to login - check the username and password are valid",
-                loginResult.text,
+        
+        try:
+            result = await self._async_request(
+                "POST",
+                f"{self._url_base}/login/v2",
+                json=data,
+                headers=self._get_headers(include_token=False)
             )
+            
+            if result and "token" in result:
+                self._api_token = result["token"]
+                _LOGGER.debug("Login successful")
+                return True
+            
+            _LOGGER.error("Failed to login - invalid response format")
             return False
-        return result
+            
+        except Exception as error:
+            _LOGGER.exception("Login failed: %s", error)
+            return False
 
-    def refresh_session(self):
-        """Refresh the session."""
-        result = False
-        headers = {"x-api-key": self._api_key}
-        data = {"username": self._email, "password": self._password}
-        loginResult = requests.post(
-            self._url_base + "/login/v2/refresh", json=data, headers=headers
+    async def async_get_accounts(self) -> dict:
+        """Get accounts information."""
+        _LOGGER.debug("Fetching accounts")
+        return await self._async_request(
+            "GET",
+            f"{self._url_base}/accounts/v2",
+            headers=self._get_headers()
         )
-        if loginResult.status_code == requests.codes.ok:
-            jsonResult = loginResult.json()
-            self._api_session = jsonResult["session"]
-            _LOGGER.debug("Refreshed session")
-            self.get_accounts()
-            result = True
-        else:
-            _LOGGER.error(
-                "Failed to refresh session - check the username and password are valid",
-                loginResult.text,
+
+    async def get_usage(self, year: str, month: str, day: str) -> Optional[list]:
+        """Get usage data for a specific date."""
+        if not self._api_token:
+            _LOGGER.debug("No API token, attempting to login")
+            if not await self.async_login():
+                _LOGGER.error("Failed to login when fetching usage data")
+                return None
+
+        if not self._contractId or not self._accountId:
+            _LOGGER.error("Missing contract ID or account ID")
+            return None
+
+        date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+        url = f"{self._url_base}/usage/v2/{self._contractId}?ba={self._accountId}&interval=hourly&from={date_str}&to={date_str}"
+        
+        _LOGGER.debug("Getting usage data for %s", date_str)
+        
+        try:
+            data = await self._async_request(
+                "POST", 
+                url, 
+                headers=self._get_headers()
             )
-            return False
-        return result
+            if data:
+                _LOGGER.debug("Successfully fetched usage data for %s", date_str)
+                return data
+            
+            _LOGGER.debug("No usage data available for %s", date_str)
+            return None
+            
+        except InvalidAuth:
+            _LOGGER.debug("Token expired, attempting to login again")
+            if await self.async_login():
+                # Retry the request with new token
+                return await self.get_usage(year, month, day)
+            return None
+        except Exception as error:
+            _LOGGER.error("Failed to fetch usage data for %s: %s", date_str, error)
+            return None
 
-    def get_accounts(self):
-        """Get the first account that we see."""
-        headers = {"x-api-key": self._api_key, "session": self._api_session}
-        result = requests.get(
-            self._url_base + "/customer/v2?fetchAccounts=true", headers=headers
-        )
-        if result.status_code == requests.codes.ok:
-            _LOGGER.debug("Retrieved accounts")
-            data = result.json()
-            self._accountId = data["accounts"][0]["id"]
-            self._contractId = data["accounts"][0]["contracts"][0]["contractId"]
-        else:
-            _LOGGER.error("Failed to fetch customer accounts %s", result.text)
-            return False
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""
 
-    def get_usage(self, year, month, day):
-        """Update our usage data."""
-        headers = {"x-api-key": self._api_key, "authorization": self._api_token}
-        response = requests.post(
-            self._url_base
-            + "/usage/v2/"
-            + self._contractId
-            + "?ba="
-            + self._accountId
-            + "&interval=hourly&from="
-            + year
-            + "-"
-            + (month.zfill(2))
-            + "-"
-            + (day.zfill(2))
-            + "&to="
-            + year
-            + "-"
-            + (month.zfill(2))
-            + "-"
-            + (day.zfill(2)),
-            headers=headers,
-        )
-        data = {}
-        if response.status_code == requests.codes.ok:
-            data = response.json()
-            if not data:
-                _LOGGER.info(
-                    "Fetched usage data for %s/%s/%s, but got nothing back",
-                    year,
-                    month,
-                    day,
-                )
-            return data
-        else:
-            _LOGGER.error("Failed to fetch usage data for %s/%s/%s", year, month, day)
-            _LOGGER.debug(response)
-            return False
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+class UnknownError(HomeAssistantError):
+    """Error to indicate an unknown error occurred."""
