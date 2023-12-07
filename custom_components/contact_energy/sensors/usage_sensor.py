@@ -1,104 +1,46 @@
 """Contact Energy Usage Sensor."""
-from datetime import datetime, timedelta
 import logging
-
-from homeassistant.helpers.entity import generate_entity_id
-
-from homeassistant.util import slugify
-from homeassistant.components.sensor import (
-    SensorEntity,
-)
-from homeassistant.const import (
-    UnitOfEnergy,
-)
-
+from datetime import datetime, timedelta
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import async_add_external_statistics
-
-from custom_components.contact_energy.const import (
-    DOMAIN,
-    DOMAIN_NAME
-)
+from custom_components.contact_energy.sensors.base_sensor import BaseSensor
+from homeassistant.const import UnitOfEnergy
+from custom_components.contact_energy.const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(hours=8)
-FORCED_SCAN_INTERVAL = timedelta(hours=24)
-ENTITY_ID_FORMAT = DOMAIN + ".{}"
-
-class ContactEnergyUsageSensor(SensorEntity):
+class ContactEnergyUsageSensor(BaseSensor):
     """Define Contact Energy Usage sensor."""
 
-    def __init__(self, hass, name, api, icp, usage_days):
+    def __init__(        
+        self, 
+        hass,
+        name, 
+        api,
+        icp,
+        unit, 
+        icon, 
+        state_class=None,
+        device_class=None, 
+        usage_days=10
+    ):
         """Initialize the sensor."""
 
-        self.entity_id = generate_entity_id("sensor.{}", f"{DOMAIN}_{slugify(name)}", hass=hass)
-        self._unique_id = f"{DOMAIN}_{icp}_{slugify(name)}"
-        self._name = name
-        
-        self._icon = "mdi:meter-electric"
+        super().__init__(
+            hass, 
+            name, 
+            api, 
+            icp, 
+            unit,
+            icon, 
+            state_class, 
+            device_class
+        )
+
         self._state = 0
-        self._unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._device_class = "energy"
-        self._state_class = "total"
-        self._state_attributes = {}
         self._usage_days = usage_days
-        self._api = api
-        self._icp = icp
-        self._last_update = None
-        self._update_failures = 0
-        self._update_interval = SCAN_INTERVAL
-        self._force_update_interval = FORCED_SCAN_INTERVAL
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
 
-    @property
-    def icon(self):
-        """Icon to use in the frontend."""
-        return self._icon
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the sensor."""
-        return self._state_attributes
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit_of_measurement
-
-    @property
-    def state_class(self):
-        """Return the state class."""
-        return self._state_class
-
-    @property
-    def device_class(self):
-        """Return the device class."""
-        return self._device_class
-
-    @property
-    def unique_id(self):
-        """Return the unique id."""
-        return self._unique_id
-    
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._icp)},
-            "name": f"{DOMAIN_NAME} installation connection point (ICP) {self._icp}",
-            "manufacturer": DOMAIN_NAME,
-            "model": "Smart Meter",
-        }
     async def async_update(self):
         """Update the sensor."""
         now = datetime.now()

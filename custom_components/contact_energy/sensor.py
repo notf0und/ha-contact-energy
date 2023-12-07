@@ -1,23 +1,23 @@
 """Contact Energy sensors."""
-from datetime import datetime, timedelta
 import logging
-
+from datetime import datetime, timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-
-from custom_components.contact_energy.src.ContactEnergyAccountSensor import ContactEnergyAccountSensor
-from custom_components.contact_energy.src.ContactEnergyUsageSensor import ContactEnergyUsageSensor
+from custom_components.contact_energy.sensors import (
+    ContactEnergyAccountSensor,
+    ContactEnergyUsageSensor
+)
 from custom_components.contact_energy.api import ContactEnergyApi
 
 from homeassistant.const import (
     CURRENCY_DOLLAR,
     CONF_EMAIL,
     CONF_PASSWORD,
+    UnitOfEnergy
 )
 
 from custom_components.contact_energy.const import (
@@ -38,8 +38,7 @@ from custom_components.contact_energy.const import (
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(hours=8)
-FORCED_SCAN_INTERVAL = timedelta(hours=24)
-ENTITY_ID_FORMAT = DOMAIN + ".{}"
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up Contact Energy sensors from a config entry."""
@@ -58,7 +57,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         return False
 
     sensors = [
-        ContactEnergyUsageSensor(hass, SENSOR_USAGE_NAME, api, icp, usage_days),
+        ContactEnergyUsageSensor(
+            hass, 
+            SENSOR_USAGE_NAME, 
+            api, 
+            icp, 
+            UnitOfEnergy.KILO_WATT_HOUR,
+            "mdi:meter-electric",
+            SensorStateClass.TOTAL,
+            SensorDeviceClass.ENERGY,
+            usage_days
+        ),
         ContactEnergyAccountSensor(
             hass,
             SENSOR_ACCOUNT_BALANCE_NAME,
@@ -66,9 +75,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             CURRENCY_DOLLAR,
             "mdi:cash",
-            lambda data: data["accountDetail"]["accountBalance"]["currentBalance"],
             SensorStateClass.MEASUREMENT,
             SensorDeviceClass.MONETARY,
+            lambda data: data["accountDetail"]["accountBalance"]["currentBalance"],
         ),
         ContactEnergyAccountSensor(
             hass,
@@ -77,9 +86,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             CURRENCY_DOLLAR,
             "mdi:cash-clock",
-            lambda data: data["accountDetail"]["nextBill"]["amount"],
             SensorStateClass.MEASUREMENT,
             SensorDeviceClass.MONETARY,
+            lambda data: data["accountDetail"]["nextBill"]["amount"],
         ),
         ContactEnergyAccountSensor(
             hass,
@@ -88,12 +97,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             None,
             "mdi:calendar",
+            None,
+            SensorDeviceClass.DATE,
             lambda data: datetime.strptime(
                 data["accountDetail"]["nextBill"]["date"],
                 "%d %b %Y"
             ).date().isoformat(),
-            None,
-            SensorDeviceClass.DATE,
         ),
         ContactEnergyAccountSensor(
             hass,
@@ -102,9 +111,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             CURRENCY_DOLLAR,
             "mdi:cash-marker",
-            lambda data: data["accountDetail"]["invoice"]["amountDue"],
             SensorStateClass.MEASUREMENT,
             SensorDeviceClass.MONETARY,
+            lambda data: data["accountDetail"]["invoice"]["amountDue"],
         ),
         ContactEnergyAccountSensor(
             hass,
@@ -113,12 +122,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             None,
             "mdi:calendar-clock",
+            None,
+            SensorDeviceClass.DATE,
             lambda data: datetime.strptime(
                 data["accountDetail"]["invoice"]["paymentDueDate"],
                 "%d %b %Y"
             ).date().isoformat(),
-            None,
-            SensorDeviceClass.DATE,
         ),
         ContactEnergyAccountSensor(
             hass,
@@ -127,12 +136,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             None,
             "mdi:calendar",
+            None,
+            SensorDeviceClass.DATE,
             lambda data: datetime.strptime(
                 data["accountDetail"]["contracts"][0]["devices"][0]["registers"][0]["previousMeterReadingDate"],
                 "%d %b %Y"
             ).date().isoformat(),
-            None,
-            SensorDeviceClass.DATE,
         ),
         ContactEnergyAccountSensor(
             hass,
@@ -141,12 +150,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             icp,
             None,
             "mdi:calendar",
+            None,
+            SensorDeviceClass.DATE,
             lambda data: datetime.strptime(
                 data["accountDetail"]["contracts"][0]["devices"][0]["nextMeterReadDate"],
                 "%d %b %Y"
             ).date().isoformat(),
-            None,
-            SensorDeviceClass.DATE,
         ),
     ]
     async_add_entities(sensors, True)
