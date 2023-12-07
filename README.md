@@ -21,11 +21,28 @@ Easily monitor your **energy usage and account details** directly in Home Assist
 2. Settings → Devices & Services → + Add Integration
 3. Search for Contact Energy and select it.
 4. Enter the required details:
-  * Email & Password: Use the credentials for your Contact Energy account.
-  * Usage Days: Number of days to fetch data from Contact Energy's API (Recommended: 10 days).
+ * Email & Password: Use the credentials for your Contact Energy account.
+ * Usage Days: Number of days to fetch data from Contact Energy's API (Recommended: 10 days).
 
 Once configured, the integration will begin fetching and displaying your account and usage data.
 A prompt will asking for email, password and usage days. 
+
+
+## Viewing Usage Data and Costs in Home Assistant
+To see your electricity usage and costs in Home Assistant’s Energy Dashboard, follow these steps:
+
+1. Go to → Settings → Dashboards → Energy
+2. - Click "Add Consumption"
+3 - Select the following data sources:
+ * Contact Energy - Electricity (###)
+  → Use an entity tracking the total costs
+  → Select Contact Energy - Electricity Cost ((###))
+4. Click "Add Consumption" again and select:
+ * Contact Energy - Free Electricity ((###))
+
+Once added, you can now view your energy usage and costs by opening the Energy Dashboard in Home Assistant.
+
+⚠ Important: Contact Energy typically provides data with a 2-3 day delay. If today's date is 15, the latest available data may only go up to the 12th. Make sure to check previous days in the Energy Dashboard to see the latest available data.
 
 ## Known issues
 Currently, no known issues.
