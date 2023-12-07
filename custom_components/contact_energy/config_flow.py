@@ -3,7 +3,6 @@ import asyncio
 import logging
 import voluptuous as vol
 import aiohttp
-import async_timeout
 from typing import Any
 
 from homeassistant import config_entries

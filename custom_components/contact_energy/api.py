@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from typing import Any, Optional
+from datetime import datetime, timedelta
 import aiohttp
 import async_timeout
 
@@ -24,6 +25,12 @@ class ContactEnergyApi:
         self._email = email
         self._password = password
         self._session = async_get_clientsession(hass)
+        self._account_cache = None
+        self._account_cache_timestamp = None
+        self._account_cache_duration = timedelta(minutes=15)
+        self._account_request = None
+        self._login_lock = asyncio.Lock()
+        self._account_lock = asyncio.Lock()
 
     def _get_headers(self, include_token: bool = True) -> dict:
         """Get headers for API requests."""
@@ -38,12 +45,13 @@ class ContactEnergyApi:
             async with async_timeout.timeout(30):
                 async with self._session.request(method, url, **kwargs) as response:
                     _LOGGER.debug("%s response status: %s", url, response.status)
-                    response_text = await response.text()
-                    _LOGGER.debug("%s response body: %s", url, response_text)
+                    # response_text = await response.text()
+                    # _LOGGER.debug("%s response body: %s", url, response_text)
                     
                     if response.status == 200:
                         return await response.json()
                     elif response.status == 401:
+                        self._api_token = ""  # Clear invalid token
                         raise InvalidAuth
                     return None
                     
@@ -59,46 +67,95 @@ class ContactEnergyApi:
 
     async def async_login(self) -> bool:
         """Login to the Contact Energy API."""
-        _LOGGER.debug("Attempting login for email: %s", self._email)
-        
-        data = {"username": self._email, "password": self._password}
-        
-        try:
-            result = await self._async_request(
-                "POST",
-                f"{self._url_base}/login/v2",
-                json=data,
-                headers=self._get_headers(include_token=False)
-            )
-            
-            if result and "token" in result:
-                self._api_token = result["token"]
-                _LOGGER.debug("Login successful")
+        async with self._login_lock:
+            # If we got a token while waiting for the lock, we're good
+            if self._api_token:
                 return True
+
+            _LOGGER.debug("Attempting login for email: %s", self._email)
             
-            _LOGGER.error("Failed to login - invalid response format")
-            return False
+            data = {"username": self._email, "password": self._password}
             
-        except Exception as error:
-            _LOGGER.exception("Login failed: %s", error)
-            return False
+            try:
+                result = await self._async_request(
+                    "POST",
+                    f"{self._url_base}/login/v2",
+                    json=data,
+                    headers=self._get_headers(include_token=False)
+                )
+                
+                if result and "token" in result:
+                    self._api_token = result["token"]
+                    _LOGGER.debug("Login successful")
+                    return True
+                
+                _LOGGER.error("Failed to login - invalid response format")
+                return False
+                
+            except Exception as error:
+                _LOGGER.exception("Login failed: %s", error)
+                return False
 
     async def async_get_accounts(self) -> dict:
-        """Get accounts information."""
-        _LOGGER.debug("Fetching accounts")
-        return await self._async_request(
-            "GET",
-            f"{self._url_base}/accounts/v2",
-            headers=self._get_headers()
-        )
+        """Get accounts information with caching and request deduplication."""
+        now = datetime.now()
+
+        # Check if cache is valid
+        if (self._account_cache and self._account_cache_timestamp and 
+            (now - self._account_cache_timestamp) < self._account_cache_duration):
+            return self._account_cache
+
+        async with self._account_lock:
+            # After acquiring lock, check cache again
+            if (self._account_cache and self._account_cache_timestamp and 
+                (now - self._account_cache_timestamp) < self._account_cache_duration):
+                _LOGGER.warning("Using account data from cache")
+
+                return self._account_cache
+
+            # Check if we need to login
+            if not self._api_token:
+                if not await self.async_login():
+                    raise InvalidAuth("Failed to login")
+
+            try:
+                _LOGGER.warning("Fetching fresh account data")
+                data = await self._async_request(
+                    "GET",
+                    f"{self._url_base}/accounts/v2",
+                    headers=self._get_headers()
+                )
+
+                if data:
+                    self._account_cache = data
+                    self._account_cache_timestamp = now
+                    return data
+
+                raise UnknownError("No data received from API")
+
+            except InvalidAuth:
+                self._account_cache = None
+                self._account_cache_timestamp = None
+                self._api_token = ""
+                
+                # Try one more time with fresh login
+                if await self.async_login():
+                    data = await self._async_request(
+                        "GET",
+                        f"{self._url_base}/accounts/v2",
+                        headers=self._get_headers()
+                    )
+                    if data:
+                        self._account_cache = data
+                        self._account_cache_timestamp = now
+                        return data
+                raise
 
     async def get_usage(self, year: str, month: str, day: str) -> Optional[list]:
         """Get usage data for a specific date."""
-        if not self._api_token:
-            _LOGGER.debug("No API token, attempting to login")
-            if not await self.async_login():
-                _LOGGER.error("Failed to login when fetching usage data")
-                return None
+        if not self._api_token and not await self.async_login():
+            _LOGGER.error("Failed to login when fetching usage data")
+            return None
 
         if not self._contractId or not self._accountId:
             _LOGGER.error("Missing contract ID or account ID")
@@ -131,7 +188,7 @@ class ContactEnergyApi:
         except Exception as error:
             _LOGGER.error("Failed to fetch usage data for %s: %s", date_str, error)
             return None
-
+        
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
 

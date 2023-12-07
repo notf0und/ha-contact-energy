@@ -1,10 +1,22 @@
 """Constants for the Contact Energy sensors."""
 
-SENSOR_USAGE_NAME = "Contact Energy Usage"
-SENSOR_SOLD_NAME = "Contact Energy Sold"
-SENSOR_PRICES_NAME = "Contact Energy Prices"
+from typing import Final, final
 
 DOMAIN = "contact_energy"
+DOMAIN_NAME = "Contact Energy"
+
+SENSOR_USAGE_NAME = "Usage"
+SENSOR_SOLD_NAME = "Sold"
+SENSOR_PRICES_NAME = "Prices"
+
+SENSOR_ACCOUNT_BALANCE_NAME = "Account Balance"
+SENSOR_NEXT_BILL_AMOUNT_NAME = "Next Bill Amount"
+SENSOR_NEXT_BILL_DATE_NAME = "Next Bill Date"
+SENSOR_PAYMENT_DUE_NAME = "Payment Due"
+SENSOR_PAYMENT_DUE_DATE_NAME = "Payment Due Date"
+SENSOR_PREVIOUS_READING_DATE_NAME = "Previous Reading Date"
+SENSOR_NEXT_READING_DATE_NAME = "Next Reading Date"
+
 
 CONF_ACCOUNT_ID = "account_id"
 CONF_CONTRACT_ID = "contract_id"
@@ -32,3 +44,6 @@ MONITORED_CONDITIONS_DEFAULT = [
     "next_day",
     "current_month",
 ]
+
+#-----#
+ENTITY_ID_FORMAT: Final = DOMAIN + ".{}"
