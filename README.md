@@ -1,28 +1,37 @@
-# Contact Energy integration for Home Assistant
-View your energy usage.
+# **Contact Energy Integration for Home Assistant**  
+Easily monitor your **energy usage and account details** directly in Home Assistant.  
 
-## Getting started
-In your configuration.yaml file, add the following:
+## **Installation**  
 
-```
-sensor:
-  - platform: contact_energy
-    email: joe@mama.com
-    password: my-secure-password
-```
+### **HACS (Recommended)**  
+1. Ensure [HACS is installed](https://hacs.xyz/docs/setup/download).  
+2. Click the button below to open the repository in HACS:  
+   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=notf0und&repository=ha-contact-energy&category=integration)  
+3. Install the **Contact Energy** integration.  
+4. Restart Home Assistant.  
 
-## Installation
-### HACS (recommended)
-1. [Install HACS](https://hacs.xyz/docs/setup/download), if you did not already
-2. [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=codyc1515&repository=ha-contact-energy&category=integration)
-3. Install the Contact Energy integration
+### **Manual Installation**  
+1. Download the integration files from the repository.  
+2. Copy all files from `custom_components/contact_energy` to your Home Assistant folder `config/custom_components/contact_energy`
 4. Restart Home Assistant
 
-### Manually
-Copy all files in the custom_components/contact_energy folder to your Home Assistant folder *config/custom_components/contact_energy*.
+
+## Getting started
+1. Open Home Assistant and navigate to:
+2. Settings → Devices & Services → + Add Integration
+3. Search for Contact Energy and select it.
+4. Enter the required details:
+  * Email & Password: Use the credentials for your Contact Energy account.
+  * Usage Days: Number of days to fetch data from Contact Energy's API (Recommended: 10 days).
+
+Once configured, the integration will begin fetching and displaying your account and usage data.
+A prompt will asking for email, password and usage days. 
 
 ## Known issues
-None known.
+Currently, no known issues.
 
 ## Future enhancements
-Your support is welcomed.
+Your contributions and feedback are always welcome!
+
+## Special mentions
+This integration was originally developed by @codyc1515 huge thanks for laying the foundation!

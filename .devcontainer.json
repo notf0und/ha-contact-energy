@@ -1,5 +1,5 @@
 {
-    "name": "codyc1515/ha-contact-energy",
+    "name": "notf0und/ha-contact-energy",
     "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [
