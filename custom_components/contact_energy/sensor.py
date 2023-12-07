@@ -21,7 +21,6 @@ from homeassistant.const import (
 )
 
 from custom_components.contact_energy.const import (
-    DOMAIN,
     CONF_USAGE_DAYS, 
     CONF_ACCOUNT_ID, 
     CONF_CONTRACT_ID, 

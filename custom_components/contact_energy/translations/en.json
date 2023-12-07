@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Contact Energy",
+        "description": "Enter your Contact Energy account details.",
+        "data": {
+          "email": "Email",
+          "password": "Password",
+          "usage_days": "Fetch data for the past X days"
+        }
+      },
+      "contract": {
+        "title": "Select a Contract",
+        "description": "Choose the electricity contract you want to track.",
+        "data": {
+          "contract_id": "Contract ID"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Failed to connect. Please check your internet connection.",
+      "unknown": "An unexpected error occurred.",
+      "invalid_contract": "Selected contract is invalid."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    },
+    "title": "Contact Energy"
+  }
+}
