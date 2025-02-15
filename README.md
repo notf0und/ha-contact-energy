@@ -50,4 +50,4 @@ Currently, no known issues.
 Your contributions and feedback are always welcome!
 
 ## Special mentions
-This integration was originally developed by @codyc1515 huge thanks for laying the foundation!
+This integration was originally developed by [@codyc1515](https://github.com/codyc1515)-huge thanks for laying the foundation!
