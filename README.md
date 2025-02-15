@@ -32,13 +32,12 @@ A prompt will asking for email, password and usage days.
 To see your electricity usage and costs in Home Assistant’s Energy Dashboard, follow these steps:
 
 1. Go to → Settings → Dashboards → Energy
-2. - Click "Add Consumption"
-3 - Select the following data sources:
- * Contact Energy - Electricity (###)
-  → Use an entity tracking the total costs
-  → Select Contact Energy - Electricity Cost ((###))
-4. Click "Add Consumption" again and select:
- * Contact Energy - Free Electricity ((###))
+2. Click "Add Consumption" and select:
+  * Contact Energy - Electricity (###)
+    * Use an entity tracking the total costs
+    * Select Contact Energy - Electricity Cost (###)
+3. Click "Add Consumption" again and select:
+ * Contact Energy - Free Electricity (###)
 
 Once added, you can now view your energy usage and costs by opening the Energy Dashboard in Home Assistant.
 
