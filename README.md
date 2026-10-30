@@ -51,11 +51,19 @@ Usage is imported as hourly long-term statistics. It is not tied to an entity, s
 
 Gas usage is only available **per month**, so the whole month appears on the first day of the month in the dashboard. It is in **kWh**, the energy Contact bills you for, not the m³ the meter counts: natural gas carries about 10.5–11 kWh per m³, so e.g. 52 m³ ≈ 555 kWh. A month appears once it has ended.
 
+### Costs and GST
+
+Contact Energy's costs exclude GST, like the line items on your bill. The electricity cost already includes the daily charge: Contact spreads it over your paid hours, so a billing period's electricity cost adds up to the bill's *Total Electricity charges (excl. GST)*.
+
+Turn on **Include GST** in the integration's **Configure** (Settings → Devices & services → Contact Energy → ⚙) to add 15% to every cost: the electricity and gas cost statistics and the cost sensors. Changing it re-imports the whole cost history, so the Energy dashboard's past months change too.
+
 ### Gas cost
 
-Home Assistant only offers *Use a static price* for sensors, not for imported statistics, and Contact Energy's API has no gas prices. So enter your rates in the integration's **Configure** (Settings → Devices & services → Contact Energy → ⚙): the **gas price** per kWh and, optionally, the **daily charge**, both including GST, from your bill. For example, a bill with *Living Smart 11.362 cents per kWh (incl. GST)*, a daily charge of *2.678 dollars per day* and Gas Industry Company fees of *3.243 cents per day* gives a price of `0.11362` and a daily charge of `2.71043`.
+Home Assistant only offers *Use a static price* for sensors, not for imported statistics, and Contact Energy's API has no gas prices. So enter your rates in **Configure**: the **gas price** per kWh and, optionally, the **daily charge**, both **excluding GST** as listed on your bill. For example, a bill with *Living Smart 632 kWh @ 9.880 cents per kWh (excl. GST)*, *Living Smart Daily Charge 33 days @ 2.329 dollars per day* and *Gas Industry Company Fees 33 days @ 2.820 cents per day* gives a price of `0.0988` and a daily charge of `2.3572`.
 
-The integration then imports `Contact Energy - Gas Cost (<gas ICP>)`: each month's kWh × price, plus the days in the month × the daily charge. When your prices change, enter the new ones: they apply from the current month, and earlier months keep the rate they had (the first rate you enter also covers all earlier history). Clearing both fields stops the gas cost.
+The integration then imports `Contact Energy - Gas Cost (<gas ICP>)`: each month's kWh × price, plus the days in the month × the daily charge (plus GST when *Include GST* is on). When your prices change, enter the new ones: they apply from the current month, and earlier months keep the rate they had (the first rate you enter also covers all earlier history). Clearing both rates stops the gas cost.
+
+The dashboard shows calendar months while bills cover billing periods, so a month never matches a bill exactly; the *Previous period cost* sensor follows the billing period.
 
 > [!NOTE]
 > Contact Energy publishes usage 1–3 days late. Right after a meter reading the billing-period sensors (*Usage*, *Usage (free)*, *Total usage*, *Usage cost*) read 0 until the first day of the new period arrives; *Latest day usage* always shows the last day with data, and the *Previous period* sensors the last complete billing period.

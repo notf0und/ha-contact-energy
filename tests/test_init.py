@@ -196,3 +196,42 @@ async def test_gas_cost_statistic_from_rates(hass: HomeAssistant, api) -> None:
     )
     # Sep 2025 (30 days), Aug 2026 (31), Sep 2026 (30), all at the first rate.
     assert [row["sum"] for row in cost] == [60.05, 145.725, 231.234]
+
+
+async def test_include_gst(hass: HomeAssistant, api) -> None:
+    """Turning GST on adds 15% to costs and re-imports the whole cost history."""
+    rates = {"gas_rates": [{"from": "2026-10", "price": 0.1, "daily": 1.0}]}
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=ELEC_ID,
+        data=ENTRY_DATA,
+        version=1,
+        minor_version=2,
+        options=rates,
+    )
+    plain = await _setup(hass, entry)
+    cost_entity = "sensor.contact_energy_electricity_latest_day_cost"
+    plain_cost = float(hass.states.get(cost_entity).state)
+
+    hass.config_entries.async_update_entry(
+        entry, options={**rates, "include_gst": True}
+    )
+    with patch(STATS) as add_stats:
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    calls = add_stats.call_args_list
+
+    def sums(calls: list, statistic_id: str) -> list[float]:
+        return next(
+            [row["sum"] for row in c.args[2]]
+            for c in calls
+            if c.args[1]["statistic_id"] == f"{DOMAIN}:{statistic_id}_{ICP.lower()}"
+        )
+
+    for statistic_id in ("energy_consumption_in_dollars", "gas_consumption_in_dollars"):
+        before, after = sums(plain, statistic_id), sums(calls, statistic_id)
+        assert len(after) == len(before)  # the whole history
+        assert after[-1] == round(before[-1] * 1.15, 3)
+    assert sums(calls, "energy_consumption") == sums(plain, "energy_consumption")
+    assert float(hass.states.get(cost_entity).state) == round(plain_cost * 1.15, 2)
+    assert entry.runtime_data.usage.cache.costs_include_gst is True

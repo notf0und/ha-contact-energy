@@ -35,6 +35,7 @@ from .const import (
     CONF_GAS_DAILY_CHARGE,
     CONF_GAS_PRICE,
     CONF_GAS_RATES,
+    CONF_INCLUDE_GST,
     CONTRACT_TYPE_ELECTRICITY,
     DOMAIN,
     NAME,
@@ -249,12 +250,12 @@ class ContactEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class ContactEnergyOptionsFlow(OptionsFlowWithReload):
-    """Gas rates, used to build the gas cost statistic."""
+    """GST and the gas rates used to build the gas cost statistic."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Ask for the gas price and daily charge."""
+        """Ask whether to include GST, and for the gas price and daily charge."""
         rates: list[dict[str, Any]] = self.config_entry.options.get(CONF_GAS_RATES, [])
         if user_input is not None:
             price = user_input.get(CONF_GAS_PRICE) or 0.0
@@ -267,7 +268,12 @@ class ContactEnergyOptionsFlow(OptionsFlowWithReload):
                 kept = []  # no gas cost at all
             else:
                 kept.append({"from": month, "price": price, "daily": daily})
-            return self.async_create_entry(data={CONF_GAS_RATES: kept})
+            return self.async_create_entry(
+                data={
+                    CONF_INCLUDE_GST: user_input[CONF_INCLUDE_GST],
+                    CONF_GAS_RATES: kept,
+                }
+            )
 
         current = rates[-1] if rates else {}
         return self.async_show_form(
@@ -275,6 +281,12 @@ class ContactEnergyOptionsFlow(OptionsFlowWithReload):
             data_schema=self.add_suggested_values_to_schema(
                 vol.Schema(
                     {
+                        vol.Required(
+                            CONF_INCLUDE_GST,
+                            default=self.config_entry.options.get(
+                                CONF_INCLUDE_GST, False
+                            ),
+                        ): bool,
                         vol.Optional(CONF_GAS_PRICE): _rate_selector("NZD/kWh"),
                         vol.Optional(CONF_GAS_DAILY_CHARGE): _rate_selector("NZD/day"),
                     }

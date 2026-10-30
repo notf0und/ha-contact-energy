@@ -22,6 +22,10 @@ CONF_LEGACY_STATISTIC_IDS = "legacy_statistic_ids"
 CONF_GAS_PRICE = "gas_price"
 CONF_GAS_DAILY_CHARGE = "gas_daily_charge"
 CONF_GAS_RATES = "gas_rates"
+# Contact Energy's costs (and the bill's line items) exclude GST; this option
+# adds it to every cost the integration reports.
+CONF_INCLUDE_GST = "include_gst"
+GST_RATE = 0.15
 
 CONTRACT_TYPE_ELECTRICITY = 1
 CONTRACT_TYPE_GAS = 2

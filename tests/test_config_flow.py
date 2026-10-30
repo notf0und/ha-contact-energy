@@ -107,6 +107,7 @@ async def test_options_gas_rates(hass: HomeAssistant, api, entry) -> None:
             result["flow_id"], {"gas_price": 0.11362, "gas_daily_charge": 2.71}
         )
         assert result["type"] is FlowResultType.CREATE_ENTRY
+        assert entry.options["include_gst"] is False
         rates = entry.options["gas_rates"]
         assert len(rates) == 1
         assert rates[0]["price"] == 0.11362
@@ -114,8 +115,9 @@ async def test_options_gas_rates(hass: HomeAssistant, api, entry) -> None:
         # A second change in the same month replaces the rate.
         result = await hass.config_entries.options.async_init(entry.entry_id)
         result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {"gas_price": 0.12}
+            result["flow_id"], {"include_gst": True, "gas_price": 0.12}
         )
+        assert entry.options["include_gst"] is True
         assert [r["price"] for r in entry.options["gas_rates"]] == [0.12]
         assert entry.options["gas_rates"][0]["daily"] == 0.0
 

@@ -131,6 +131,9 @@ class UsageCache:
         self.history_done = False
         # Meter reading dates seen so far: each one starts a billing period.
         self.reading_dates: set[str] = set()
+        # Whether the imported cost statistics include GST, so a change of
+        # the option re-imports the whole history.
+        self.costs_include_gst = False
 
     # Persistence
 
@@ -143,6 +146,7 @@ class UsageCache:
             "empty_streak": self.empty_streak,
             "history_done": self.history_done,
             "reading_dates": sorted(self.reading_dates),
+            "costs_include_gst": self.costs_include_gst,
         }
 
     @classmethod
@@ -155,6 +159,7 @@ class UsageCache:
         cache.empty_streak = data.get("empty_streak", 0)
         cache.history_done = data.get("history_done", False)
         cache.reading_dates = set(data.get("reading_dates", []))
+        cache.costs_include_gst = data.get("costs_include_gst", False)
         return cache
 
     @classmethod

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 import json
 import logging
@@ -34,12 +34,14 @@ from .const import (
     CONF_CONTRACT_ID,
     CONF_FETCH_HISTORY,
     CONF_GAS_RATES,
+    CONF_INCLUDE_GST,
     CONF_LEGACY_STATISTIC_IDS,
     CONTRACT_TYPE_GAS,
     CURRENCY,
     DOMAIN,
     GAS_HISTORY_YEARS,
     GAS_UPDATE_INTERVAL,
+    GST_RATE,
     REQUEST_DELAY,
     REQUESTS_PER_UPDATE,
     TIMEZONE,
@@ -233,7 +235,23 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         """Return whether all available history should be fetched."""
         return self.config_entry.data.get(CONF_FETCH_HISTORY, True)
 
+    @property
+    def include_gst(self) -> bool:
+        """Return whether costs include GST."""
+        return self.config_entry.options.get(CONF_INCLUDE_GST, False)
+
+    @property
+    def cost_factor(self) -> float:
+        """Multiplier from Contact Energy's costs (excl. GST) to reported costs."""
+        return 1 + GST_RATE if self.include_gst else 1.0
+
     async def async_load(self) -> None:
+        """Load the cache and re-import the costs if the GST option changed."""
+        await self._async_load_cache()
+        if self.cache.days and self.cache.costs_include_gst != self.include_gst:
+            self._pending_statistics = min(self.cache.days)
+
+    async def _async_load_cache(self) -> None:
         """Load the cache, migrating the 1.0.x sensor attributes if needed."""
         if stored := await self._store.async_load():
             self.cache = UsageCache.from_dict(stored)
@@ -284,13 +302,17 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         if reading_date and self.cache.add_reading_date(reading_date):
             self._store.async_delay_save(self.cache.as_dict, 10)
         last_month = max(self.gas_months, default=None)
+        previous = self.cache.previous_period(reading_date)
         return UsageData(
-            self.cache.totals_since(reading_date),
-            self.cache.previous_period(reading_date),
-            self.cache.totals_since(self.cache.last_day),
+            self._with_gst(self.cache.totals_since(reading_date)),
+            self._with_gst(previous) if previous else None,
+            self._with_gst(self.cache.totals_since(self.cache.last_day)),
             self.gas_months[last_month][0] if last_month else None,
             last_month.date() if last_month else None,
         )
+
+    def _with_gst(self, totals: PeriodTotals) -> PeriodTotals:
+        return replace(totals, cost=totals.cost * self.cost_factor)
 
     async def _async_fetch_usage(self) -> None:
         today = dt_util.now(TIMEZONE).date()
@@ -371,12 +393,13 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         starts = sorted(self.gas_months)
         kwh = [self.gas_months[start][0] for start in starts]
         # The API has no gas prices (yet); fall back to the user's rates.
-        costs = [
-            cost
-            if (cost := self.gas_months[start][1]) is not None
-            else gas_month_cost(start.date(), value, rates)
-            for start, value in zip(starts, kwh, strict=True)
-        ]
+        # Both exclude GST.
+        costs: list[float | None] = []
+        for start, value in zip(starts, kwh, strict=True):
+            cost = self.gas_months[start][1]
+            if cost is None:
+                cost = gas_month_cost(start.date(), value, rates)
+            costs.append(None if cost is None else cost * self.cost_factor)
         series = [
             ("gas", "Gas", UnitOfEnergy.KILO_WATT_HOUR, EnergyConverter.UNIT_CLASS, kwh)
         ]
@@ -420,7 +443,13 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
                 EnergyConverter.UNIT_CLASS,
                 rows.paid_kwh,
             ),
-            ("cost", "Electricity Cost", CURRENCY, None, rows.cost),
+            (
+                "cost",
+                "Electricity Cost",
+                CURRENCY,
+                None,
+                [round(cost * self.cost_factor, 3) for cost in rows.cost],
+            ),
             (
                 "free",
                 "Free Electricity",
@@ -445,6 +474,9 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
                     for start, value in zip(rows.starts, sums, strict=True)
                 ],
             )
+        if self.cache.costs_include_gst != self.include_gst:
+            self.cache.costs_include_gst = self.include_gst
+            self._store.async_delay_save(self.cache.as_dict, 10)
 
     async def async_backfill_now(self) -> None:
         """Fetch the next batch right away (used by the button)."""

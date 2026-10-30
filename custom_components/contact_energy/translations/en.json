@@ -133,15 +133,17 @@
   "options": {
     "step": {
       "init": {
-        "title": "Gas rates",
-        "description": "Contact Energy does not publish gas prices, so enter the rates from your bill (including GST) to get a gas cost for the Energy dashboard. A change applies from this month on; earlier months keep their rate. Leave both empty for no gas cost.",
+        "title": "Contact Energy options",
+        "description": "Contact Energy's costs, like the line items on your bill, exclude GST. Gas prices are not published, so enter the gas rates from your bill (excluding GST) to get a gas cost for the Energy dashboard. A rate change applies from this month on; earlier months keep their rate. Leave both rates empty for no gas cost.",
         "data": {
+          "include_gst": "Include GST",
           "gas_price": "Gas price",
           "gas_daily_charge": "Gas daily charge"
         },
         "data_description": {
-          "gas_price": "Per kWh, e.g. 0.11362 for 11.362 cents per kWh.",
-          "gas_daily_charge": "Fixed charges per day, e.g. the daily charge plus the Gas Industry Company fee. Leave empty to count only usage."
+          "include_gst": "Add 15% GST to every cost: the electricity and gas cost statistics (their whole history is re-imported) and the cost sensors.",
+          "gas_price": "Per kWh excluding GST, e.g. 0.0988 for 9.880 cents per kWh.",
+          "gas_daily_charge": "Fixed charges per day excluding GST, e.g. the daily charge plus the Gas Industry Company fee. Leave empty to count only usage."
         }
       }
     }
