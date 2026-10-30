@@ -123,9 +123,25 @@ def hourly(day: date, free_from: int = 21) -> list[dict[str, Any]]:
 async def fake_usage(contract_id, account_id, interval, start, end):
     """Usage endpoint: hourly electricity for the last 60 days, monthly gas."""
     if interval == "monthly":
+        months = [
+            {
+                "date": "2025-09-01T00:00:00.000+12:00",
+                "value": "300.5",
+                "dollarValue": None,
+            },
+            {
+                "date": "2026-08-01T00:00:00.000+12:00",
+                "value": "546.753",
+                "dollarValue": None,
+            },
+            {
+                "date": "2026-09-01T00:00:00.000+12:00",
+                "value": "555.090",
+                "dollarValue": None,
+            },
+        ]
         return [
-            {"date": "2026-08-01T00:00:00.000+12:00", "value": "546.753"},
-            {"date": "2026-09-01T00:00:00.000+12:00", "value": "555.090"},
+            m for m in months if start.isoformat() <= m["date"][:10] <= end.isoformat()
         ]
     if contract_id != ELEC_ID or interval != "hourly":
         return []

@@ -216,6 +216,28 @@ USAGE_SENSORS: tuple[UsageSensorDescription, ...] = (
         value_fn=lambda d: round(d.period.cost, 2),
     ),
     UsageSensorDescription(
+        key="latest_day_usage",
+        translation_key="latest_day_usage",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=2,
+        billing_period=False,
+        value_fn=lambda d: (
+            round(d.latest_day.total_kwh, 3) if d.latest_day.last_day else None
+        ),
+    ),
+    UsageSensorDescription(
+        key="latest_day_cost",
+        translation_key="latest_day_cost",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=CURRENCY,
+        suggested_display_precision=2,
+        billing_period=False,
+        value_fn=lambda d: (
+            round(d.latest_day.cost, 2) if d.latest_day.last_day else None
+        ),
+    ),
+    UsageSensorDescription(
         key="usage_data_date",
         translation_key="usage_data_date",
         device_class=SensorDeviceClass.DATE,
@@ -329,6 +351,12 @@ class UsageSensor(ContactEnergyEntity[ContactEnergyUsageCoordinator], SensorEnti
         if self.entity_description.key == "gas_usage_last_month":
             month: date | None = data.gas_last_month_start
             return {"month": month.strftime("%Y-%m") if month else None}
+        if self.entity_description.key.startswith("latest_day"):
+            return {
+                "date": data.latest_day.last_day,
+                "paid_kwh": round(data.latest_day.paid_kwh, 3),
+                "free_kwh": round(data.latest_day.free_kwh, 3),
+            }
         if not self.entity_description.billing_period:
             return None
         return {

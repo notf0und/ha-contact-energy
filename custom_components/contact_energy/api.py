@@ -84,9 +84,9 @@ class ContactEnergyApi:
     ) -> list[dict[str, Any]]:
         """Return usage points ("hourly" only works for a single day).
 
-        The API answers 502 when there is nothing to return for the
-        contract/interval/range (e.g. hourly or daily gas), so that is
-        treated as "no data".
+        The API answers 404 or 502 when there is nothing to return for the
+        contract/interval/range (e.g. hourly or daily gas, months before the
+        account started, ranges over ~2.5 years), so those mean "no data".
         """
         data = await self._request(
             "POST",
@@ -97,7 +97,7 @@ class ContactEnergyApi:
                 "from": start.isoformat(),
                 "to": end.isoformat(),
             },
-            empty_on_502=True,
+            no_data_ok=True,
         )
         return data if isinstance(data, list) else []
 
@@ -107,7 +107,7 @@ class ContactEnergyApi:
         path: str,
         *,
         params: dict[str, str] | None = None,
-        empty_on_502: bool = False,
+        no_data_ok: bool = False,
     ) -> Any:
         """Make an authenticated request, logging in again once if needed."""
         for attempt in range(2):
@@ -124,7 +124,7 @@ class ContactEnergyApi:
                 raise InvalidAuth
             if status == 200:
                 return data
-            if status == 502 and empty_on_502:
+            if status in (404, 502) and no_data_ok:
                 return None
             raise CannotConnect(f"{method} {path} returned {status}")
         raise CannotConnect(f"{method} {path} failed")

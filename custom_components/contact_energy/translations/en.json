@@ -95,6 +95,12 @@
       "usage_cost": {
         "name": "Usage cost"
       },
+      "latest_day_usage": {
+        "name": "Latest day usage"
+      },
+      "latest_day_cost": {
+        "name": "Latest day cost"
+      },
       "usage_data_date": {
         "name": "Usage data until"
       },

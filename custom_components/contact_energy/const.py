@@ -23,6 +23,8 @@ CONTRACT_TYPE_GAS = 2
 ACCOUNT_UPDATE_INTERVAL = timedelta(hours=1)
 USAGE_UPDATE_INTERVAL = timedelta(hours=1)
 GAS_UPDATE_INTERVAL = timedelta(hours=12)
+# Monthly gas usage is fetched a year at a time, at most this far back.
+GAS_HISTORY_YEARS = 5
 
 # Hourly usage can only be requested one day at a time and each request takes
 # a few seconds, so history is fetched in batches.

@@ -49,13 +49,31 @@ async def test_setup_creates_sensors_and_statistics(
     assert usage.attributes["period_start"] == date(2026, 10, 25)
     assert float(usage.state) >= 0
 
+    latest = hass.states.get("sensor.contact_energy_electricity_latest_day_usage")
+    assert latest.state == "12.0"
+    assert latest.attributes["free_kwh"] == 1.5
+    assert (
+        hass.states.get("sensor.contact_energy_gas_usage_last_month").state == "555.09"
+    )
+
     ids = {call.args[1]["statistic_id"] for call in calls}
     suffix = ICP.lower()
     assert ids == {
         f"{DOMAIN}:energy_consumption_{suffix}",
         f"{DOMAIN}:energy_consumption_in_dollars_{suffix}",
         f"{DOMAIN}:free_energy_consumption_{suffix}",
+        f"{DOMAIN}:gas_consumption_{suffix}",
     }
+    gas = next(
+        c.args[2]
+        for c in calls
+        if c.args[1]["statistic_id"].startswith(f"{DOMAIN}:gas")
+    )
+    assert [row["sum"] for row in gas] == [300.5, 847.253, 1402.343]
+    assert gas[0]["start"].isoformat() == "2025-09-01T00:00:00+12:00"
+    # Yearly requests until one finds nothing: 2025-10..2026-10, 2024-10..2025-09, empty.
+    monthly = [c for c in api["usage"].call_args_list if c.args[2] == "monthly"]
+    assert len(monthly) == 3
     paid = next(
         c.args[2]
         for c in calls

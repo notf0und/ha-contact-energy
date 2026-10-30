@@ -9,7 +9,7 @@ Brings your [Contact Energy](https://contact.co.nz) (New Zealand) account into H
 - **Hourly electricity usage and cost in the Energy dashboard**, including the free hours of plans such as *Good Nights*, with all the history your account has.
 - **Billing-period totals**: paid, free and total kWh plus cost since the last meter reading.
 - **Account details**: balance, next bill amount and date, payment due, plan name, meter reading dates.
-- **Gas** (when the account has a gas connection): meter reading, reading dates and last month's usage.
+- **Gas** (when the account has a gas connection): monthly gas usage in the Energy dashboard, meter reading (with its history), reading dates and last month's usage.
 
 It uses the same API as the Contact Energy app, signing in with your app email and password.
 
@@ -45,9 +45,12 @@ Usage is imported as hourly long-term statistics. It is not tied to an entity, s
 |-----------|--------|
 | `Contact Energy - Electricity (<ICP>)` | Grid consumption; for costs choose *Use an entity tracking the total costs* → `Contact Energy - Electricity Cost (<ICP>)` |
 | `Contact Energy - Free Electricity (<ICP>)` | A second grid consumption (free hours, no cost) |
+| `Contact Energy - Gas (<gas ICP>)` | **Gas consumption** section → Add gas source |
+
+Gas usage is only available **per month**, so the whole month appears on the first day of the month in the dashboard. It is in **kWh**, the energy Contact bills you for, not the m³ the meter counts: natural gas carries about 10.5–11 kWh per m³, so e.g. 52 m³ ≈ 555 kWh. A month appears once it has ended.
 
 > [!NOTE]
-> Contact Energy publishes usage 1–3 days late. Today's and yesterday's bars stay empty until the data arrives, so look a few days back to see the latest usage. The **Usage data until** sensor shows the latest day available.
+> Contact Energy publishes usage 1–3 days late. Right after a meter reading the billing-period sensors (*Usage*, *Usage (free)*, *Total usage*, *Usage cost*) read 0 until the first day of the new period arrives; *Latest day usage* always shows the last day with data. Today's and yesterday's bars stay empty until the data arrives, so look a few days back to see the latest usage. The **Usage data until** sensor shows the latest day available.
 
 History is fetched gradually in the background: about 48 days per hour, newest first, until the start of your account's data. The **Fetch usage now** button fetches the next batch straight away.
 
@@ -60,12 +63,13 @@ History is fetched gradually in the background: about 48 days per hour, newest f
 | Account | Plan | e.g. `Good Nights (Monday - Friday)` |
 | Electricity | Usage, Usage (free), Total usage | kWh since the last meter reading (the billing period), with `period_start` and `data_until` attributes |
 | Electricity | Usage cost | NZD since the last meter reading |
+| Electricity | Latest day usage, Latest day cost | The last day with data (`date`, `paid_kwh`, `free_kwh` attributes) |
 | Electricity | Usage data until | Latest day with usage data |
 | Electricity | Previous reading date, Next reading date | |
 | Electricity | Meter reading | Disabled by default: only updated when the meter is read |
 | Electricity | Fetch usage now | Button: fetch the next batch of usage |
 | Gas | Meter reading, Previous reading date, Next reading date | Only with a gas connection |
-| Gas | Usage last month | kWh for the last full month (the API has no daily gas data); `month` attribute |
+| Gas | Usage last month | kWh (energy, not m³) for the last full month — the API has no daily gas data; `month` attribute |
 
 Account details are refreshed hourly; usage is checked hourly.
 
@@ -77,6 +81,7 @@ Account details are refreshed hourly; usage is checked hourly.
 - The usage history moves from the *Usage* sensor's attributes (which bloated the database) to `.storage/contact_energy.<entry_id>`. The daily totals are migrated, and the hourly detail is re-fetched in the background.
 - Monetary sensors now use `NZD` instead of `$`. Home Assistant may raise a repair about the unit change for their long-term statistics; accept it to update the unit.
 - Gas entities are only created when the account has a gas connection.
+- The gas meter reading changed from a *measurement* to a *total increasing* sensor, so its 1.0.x long-term statistics (stored as averages) no longer show in its history graph. They can be converted in the database: for each old row set `state = max` and `sum = state - <first reading>`.
 
 ## Troubleshooting
 

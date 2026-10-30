@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import json
 import logging
 from typing import Any
@@ -37,6 +37,7 @@ from .const import (
     CONTRACT_TYPE_GAS,
     CURRENCY,
     DOMAIN,
+    GAS_HISTORY_YEARS,
     GAS_UPDATE_INTERVAL,
     REQUEST_DELAY,
     REQUESTS_PER_UPDATE,
@@ -177,6 +178,7 @@ class UsageData:
     """Usage totals exposed to the sensors."""
 
     period: PeriodTotals
+    latest_day: PeriodTotals
     gas_last_month: float | None
     gas_last_month_start: date | None
 
@@ -209,7 +211,8 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
         )
         self._fetch_lock = asyncio.Lock()
-        self._gas: tuple[float | None, date | None] = (None, None)
+        # Month start -> (kWh, cost or None), only for months that have ended.
+        self.gas_months: dict[datetime, tuple[float, float | None]] = {}
         self._gas_fetched: datetime | None = None
         self._pending_statistics: str | None = None
         suffix = (
@@ -219,6 +222,8 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
             "paid": f"{DOMAIN}:energy_consumption{suffix}",
             "cost": f"{DOMAIN}:energy_consumption_in_dollars{suffix}",
             "free": f"{DOMAIN}:free_energy_consumption{suffix}",
+            "gas": f"{DOMAIN}:gas_consumption{suffix}",
+            "gas_cost": f"{DOMAIN}:gas_consumption_in_dollars{suffix}",
         }
 
     @property
@@ -274,8 +279,12 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
                 self._async_push_statistics()
 
         reading_date = self.account.data.reading_date if self.account.data else None
+        last_month = max(self.gas_months, default=None)
         return UsageData(
-            self.cache.totals_since(reading_date), self._gas[0], self._gas[1]
+            self.cache.totals_since(reading_date),
+            self.cache.totals_since(self.cache.last_day),
+            self.gas_months[last_month][0] if last_month else None,
+            last_month.date() if last_month else None,
         )
 
     async def _async_fetch_usage(self) -> None:
@@ -312,6 +321,7 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
             self._store.async_delay_save(self.cache.as_dict, 10)
 
     async def _async_fetch_gas(self) -> None:
+        """Fetch monthly gas usage (the API has no daily or hourly gas data)."""
         gas = self.account.data.gas if self.account.data else None
         now = dt_util.utcnow()
         if gas is None or (
@@ -319,23 +329,63 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         ):
             return
         today = dt_util.now(TIMEZONE).date()
-        start = date(today.year - 1, today.month, 1)
-        points = await self.api.async_get_usage(
-            str(gas["id"]), self.account.account_id, "monthly", start, today
-        )
+        this_month = date(today.year, today.month, 1)
+        months: dict[datetime, tuple[float, float | None]] = {}
+        # Longer ranges are rejected, so walk back a year at a time until a
+        # year without data (the start of the account).
+        end = today
+        for _ in range(GAS_HISTORY_YEARS):
+            start = date(end.year - 1, end.month, 1)
+            points = await self.api.async_get_usage(
+                str(gas["id"]), self.account.account_id, "monthly", start, end
+            )
+            found = False
+            for point in points:
+                value = parse_number(point.get("value"))
+                try:
+                    month = datetime.fromisoformat(point["date"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if value is None or month.date() >= this_month:
+                    continue
+                months[month] = (value, parse_number(point.get("dollarValue")))
+                found = True
+            if not found:
+                break
+            end = start - timedelta(days=1)
         self._gas_fetched = now
-        months = [
-            (datetime.fromisoformat(p["date"]).date(), parse_number(p.get("value")))
-            for p in points
-            if p.get("date") and p.get("value") is not None
+        if months != self.gas_months:
+            self.gas_months = months
+            self._async_push_gas_statistics()
+
+    def _async_push_gas_statistics(self) -> None:
+        if not self.gas_months:
+            return
+        gas_icp = self.account.data.gas["icp"] if self.account.data.gas else self.icp
+        series = [
+            ("gas", "Gas", UnitOfEnergy.KILO_WATT_HOUR, EnergyConverter.UNIT_CLASS, 0)
         ]
-        # Only report months that have ended.
-        months = [
-            m for m in months if (m[0].year, m[0].month) < (today.year, today.month)
-        ]
-        if months:
-            month, value = max(months)
-            self._gas = (value, month)
+        if any(cost is not None for _, cost in self.gas_months.values()):
+            series.append(("gas_cost", "Gas Cost", CURRENCY, None, 1))
+        for key, label, unit, unit_class, index in series:
+            total = 0.0
+            rows = []
+            for start in sorted(self.gas_months):
+                total += self.gas_months[start][index] or 0.0
+                rows.append(StatisticData(start=start, sum=round(total, 3)))
+            async_add_external_statistics(
+                self.hass,
+                StatisticMetaData(
+                    mean_type=StatisticMeanType.NONE,
+                    has_sum=True,
+                    name=f"Contact Energy - {label} ({gas_icp})",
+                    source=DOMAIN,
+                    statistic_id=self.statistic_ids[key],
+                    unit_class=unit_class,
+                    unit_of_measurement=unit,
+                ),
+                rows,
+            )
 
     def _async_push_statistics(self) -> None:
         if self._pending_statistics is None:
@@ -402,4 +452,8 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
             "history_done": self.cache.history_done,
             "fetch_history": self.fetch_history,
             "latest_day_sample": self.cache.days[days[-1]][:3] if days else [],
+            "gas_months": {
+                start.date().isoformat(): value
+                for start, value in sorted(self.gas_months.items())
+            },
         }
