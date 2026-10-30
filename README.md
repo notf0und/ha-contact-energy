@@ -13,6 +13,8 @@ Brings your [Contact Energy](https://contact.co.nz) (New Zealand) account into H
 
 It uses the same API as the Contact Energy app, signing in with your app email and password.
 
+It is developed and tested on a *Good Nights* plan. If your plan (EV, time-of-use, prepay, ...) gives odd values, please [report it](#reporting-issues) with a diagnostics file.
+
 ## Installation
 
 ### HACS (recommended)
@@ -86,16 +88,26 @@ Account details are refreshed hourly; usage is checked hourly.
 - Gas entities are only created when the account has a gas connection.
 - The gas meter reading changed from a *measurement* to a *total increasing* sensor, so its 1.0.x long-term statistics (stored as averages) no longer show in its history graph. They can be converted in the database: for each old row set `state = max` and `sum = state - <first reading>`.
 
-## Troubleshooting
+## Reporting issues
 
-- **Diagnostics**: the integration's menu → *Download diagnostics* (credentials, addresses and meter serials are redacted).
-- **Debug logging**:
+Wrong numbers, errors, or a plan that isn't handled correctly (for example night or EV rates showing up as *free*)? **Please [open an issue on GitHub](https://github.com/notf0und/ha-contact-energy/issues/new/choose)** rather than sending a message on Reddit, the forums or email. Issues are the only place I track problems, and others with the same plan can find the answer there.
 
-  ```yaml
-  logger:
-    logs:
-      custom_components.contact_energy: debug
-  ```
+Attach a **diagnostics file**; it is usually all that is needed:
+
+1. **Settings → Devices & services → Contact Energy**.
+2. Open the **Electricity** device (or **Gas**, for a gas problem).
+3. In the device's **⋮** menu, choose **Download diagnostics**. The same download is also in the integration entry's ⋮ menu.
+4. Drag the downloaded `.json` file into the issue.
+
+The file contains the integration's state plus fresh, unmodified responses from the Contact Energy API: your plan, the hourly usage of the latest day, two weeks of daily usage and recent gas months. That is how plans I don't have myself can be supported. Your email, password, addresses, ICP numbers and meter serial numbers are removed; the usage figures, costs and balances remain. Have a look before you upload it if you want to check.
+
+For errors, debug logs help too:
+
+```yaml
+logger:
+  logs:
+    custom_components.contact_energy: debug
+```
 
 ## Development
 

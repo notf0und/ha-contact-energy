@@ -17,7 +17,7 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.contact_energy.api import InvalidAuth
 from custom_components.contact_energy.const import DOMAIN
 
-from .conftest import ELEC_ID, ENTRY_DATA, ICP
+from .conftest import ELEC_ID, ENTRY_DATA, ICP, PLANS
 
 STATS = "custom_components.contact_energy.coordinator.async_add_external_statistics"
 
@@ -149,3 +149,29 @@ async def test_migration_from_1_0(hass: HomeAssistant, api) -> None:
     assert usage.cache.history_done
     # The 1.0.x entity id is kept.
     assert hass.states.get("sensor.contact_energy_usage") is not None
+
+
+async def test_diagnostics(hass: HomeAssistant, api, entry) -> None:
+    """Device diagnostics carry raw API samples with personal data redacted."""
+    from homeassistant.helpers import device_registry as dr
+
+    from custom_components.contact_energy.diagnostics import (
+        async_get_device_diagnostics,
+    )
+
+    await _setup(hass, entry)
+    device = next(
+        d
+        for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        if (DOMAIN, ICP) in d.identifiers
+    )
+    diag = await async_get_device_diagnostics(hass, entry, device)
+
+    dump = json.dumps(diag, default=str)
+    for secret in ("user@example.com", "secret", ICP, ICP.lower(), "Example Street"):
+        assert secret not in dump
+    samples = diag["api_samples"]
+    assert samples["plan_details"] == PLANS
+    assert samples["hourly"][0]["unchargedValue"] == "0.00"
+    assert len(samples["hourly_cached"]) == len(samples["hourly"])
+    assert [m["value"] for m in samples["gas_monthly"]] == ["546.753", "555.090"]

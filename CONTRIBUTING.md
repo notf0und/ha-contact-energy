@@ -15,8 +15,8 @@ Pull requests are the best way to propose changes to the codebase.
 
 1. Fork the repo and create your branch from `main`.
 2. If you've changed something, update the documentation.
-3. Make sure your code lints (using `scripts/lint`).
-4. Test you contribution.
+3. Make sure your code lints (`ruff check . && ruff format --check .`).
+4. Run the tests (`pytest`).
 5. Issue that pull request!
 
 ## Any contributions you make will be under the MIT Software License
@@ -42,9 +42,12 @@ Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
 
 People *love* thorough bug reports. I'm not even kidding.
 
+Please attach a diagnostics file (see the README's *Reporting issues* section):
+it contains the raw API responses needed to investigate plan-specific problems.
+
 ## Use a Consistent Coding Style
 
-Use [black](https://github.com/ambv/black) to make sure the code follows the style.
+Run `ruff check . && ruff format .` before committing.
 
 ## Test your code modification
 
