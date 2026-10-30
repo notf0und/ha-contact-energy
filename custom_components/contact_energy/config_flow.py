@@ -6,14 +6,24 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
 )
+from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
 from .api import CannotConnect, ContactEnergyApi, InvalidAuth
@@ -22,9 +32,13 @@ from .const import (
     CONF_CONTRACT_ICP,
     CONF_CONTRACT_ID,
     CONF_FETCH_HISTORY,
+    CONF_GAS_DAILY_CHARGE,
+    CONF_GAS_PRICE,
+    CONF_GAS_RATES,
     CONTRACT_TYPE_ELECTRICITY,
     DOMAIN,
     NAME,
+    TIMEZONE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -69,11 +83,25 @@ async def _async_electricity_contracts(api: ContactEnergyApi) -> list[dict[str, 
     return contracts
 
 
+def _rate_selector(unit: str) -> NumberSelector:
+    return NumberSelector(
+        NumberSelectorConfig(
+            min=0, step="any", mode=NumberSelectorMode.BOX, unit_of_measurement=unit
+        )
+    )
+
+
 class ContactEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
     MINOR_VERSION = 2
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> ContactEnergyOptionsFlow:
+        """Return the options flow."""
+        return ContactEnergyOptionsFlow()
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -216,5 +244,44 @@ class ContactEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
                         default=entry.data.get(CONF_FETCH_HISTORY, True),
                     ): bool,
                 }
+            ),
+        )
+
+
+class ContactEnergyOptionsFlow(OptionsFlowWithReload):
+    """Gas rates, used to build the gas cost statistic."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the gas price and daily charge."""
+        rates: list[dict[str, Any]] = self.config_entry.options.get(CONF_GAS_RATES, [])
+        if user_input is not None:
+            price = user_input.get(CONF_GAS_PRICE) or 0.0
+            daily = user_input.get(CONF_GAS_DAILY_CHARGE) or 0.0
+            # A new rate applies from this month on; earlier months keep the
+            # rate they had. A change within the month replaces that month's rate.
+            month = dt_util.now(TIMEZONE).strftime("%Y-%m")
+            kept = [rate for rate in rates if rate["from"] < month]
+            if not price and not daily:
+                kept = []  # no gas cost at all
+            else:
+                kept.append({"from": month, "price": price, "daily": daily})
+            return self.async_create_entry(data={CONF_GAS_RATES: kept})
+
+        current = rates[-1] if rates else {}
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(
+                    {
+                        vol.Optional(CONF_GAS_PRICE): _rate_selector("NZD/kWh"),
+                        vol.Optional(CONF_GAS_DAILY_CHARGE): _rate_selector("NZD/day"),
+                    }
+                ),
+                {
+                    CONF_GAS_PRICE: current.get("price"),
+                    CONF_GAS_DAILY_CHARGE: current.get("daily"),
+                },
             ),
         )

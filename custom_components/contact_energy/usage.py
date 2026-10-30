@@ -69,6 +69,26 @@ def parse_hourly(points: list[dict[str, Any]], day: date) -> list[Hour]:
     return [hours[start] for start in sorted(hours)]
 
 
+def gas_month_cost(
+    month: date, kwh: float, rates: list[dict[str, Any]]
+) -> float | None:
+    """Return a month's gas cost from the user's rates (None without rates).
+
+    Each rate is ``{"from": "YYYY-MM", "price": per kWh, "daily": per day}``;
+    the oldest one also covers the months before it.
+    """
+    if not rates:
+        return None
+    key = month.strftime("%Y-%m")
+    rate = rates[0]
+    for candidate in rates:
+        if candidate["from"] <= key:
+            rate = candidate
+    next_month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    days = (next_month - month.replace(day=1)).days
+    return kwh * _number(rate.get("price")) + days * _number(rate.get("daily"))
+
+
 @dataclass
 class PeriodTotals:
     """Usage totals from a start day up to the latest data."""

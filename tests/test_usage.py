@@ -11,6 +11,7 @@ from custom_components.contact_energy.const import (
 )
 from custom_components.contact_energy.usage import (
     UsageCache,
+    gas_month_cost,
     hours_in_day,
     parse_hourly,
 )
@@ -157,3 +158,17 @@ def test_previous_period_estimate_clamps_month_end() -> None:
     """A reading on the 31st estimates the end of the shorter month before."""
     previous = UsageCache().previous_period(date(2026, 3, 31))
     assert previous.start == date(2026, 2, 28)
+
+
+def test_gas_month_cost() -> None:
+    """Gas cost uses the rate in force for the month, the oldest for earlier ones."""
+    rates = [
+        {"from": "2026-06", "price": 0.1, "daily": 2.0},
+        {"from": "2026-10", "price": 0.2, "daily": 0.0},
+    ]
+    assert gas_month_cost(date(2026, 9, 1), 500, []) is None
+    # September: 30 days, the June rate.
+    assert gas_month_cost(date(2026, 9, 1), 500, rates) == 50 + 60
+    # Before the first rate: still the first rate (February 2026 has 28 days).
+    assert gas_month_cost(date(2026, 2, 1), 100, rates) == 10 + 56
+    assert gas_month_cost(date(2026, 10, 1), 100, rates) == 20

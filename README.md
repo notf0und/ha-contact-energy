@@ -47,9 +47,15 @@ Usage is imported as hourly long-term statistics. It is not tied to an entity, s
 |-----------|--------|
 | `Contact Energy - Electricity (<ICP>)` | Grid consumption; for costs choose *Use an entity tracking the total costs* → `Contact Energy - Electricity Cost (<ICP>)` |
 | `Contact Energy - Free Electricity (<ICP>)` | A second grid consumption (free hours, no cost) |
-| `Contact Energy - Gas (<gas ICP>)` | **Gas consumption** section → Add gas source |
+| `Contact Energy - Gas (<gas ICP>)` | **Gas consumption** section → Add gas source; for costs choose *Use an entity tracking the total costs* → `Contact Energy - Gas Cost (<gas ICP>)` (needs gas rates, below) |
 
 Gas usage is only available **per month**, so the whole month appears on the first day of the month in the dashboard. It is in **kWh**, the energy Contact bills you for, not the m³ the meter counts: natural gas carries about 10.5–11 kWh per m³, so e.g. 52 m³ ≈ 555 kWh. A month appears once it has ended.
+
+### Gas cost
+
+Home Assistant only offers *Use a static price* for sensors, not for imported statistics, and Contact Energy's API has no gas prices. So enter your rates in the integration's **Configure** (Settings → Devices & services → Contact Energy → ⚙): the **gas price** per kWh and, optionally, the **daily charge**, both including GST, from your bill. For example, a bill with *Living Smart 11.362 cents per kWh (incl. GST)*, a daily charge of *2.678 dollars per day* and Gas Industry Company fees of *3.243 cents per day* gives a price of `0.11362` and a daily charge of `2.71043`.
+
+The integration then imports `Contact Energy - Gas Cost (<gas ICP>)`: each month's kWh × price, plus the days in the month × the daily charge. When your prices change, enter the new ones: they apply from the current month, and earlier months keep the rate they had (the first rate you enter also covers all earlier history). Clearing both fields stops the gas cost.
 
 > [!NOTE]
 > Contact Energy publishes usage 1–3 days late. Right after a meter reading the billing-period sensors (*Usage*, *Usage (free)*, *Total usage*, *Usage cost*) read 0 until the first day of the new period arrives; *Latest day usage* always shows the last day with data, and the *Previous period* sensors the last complete billing period.

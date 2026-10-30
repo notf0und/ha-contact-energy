@@ -175,3 +175,24 @@ async def test_diagnostics(hass: HomeAssistant, api, entry) -> None:
     assert samples["hourly"][0]["unchargedValue"] == "0.00"
     assert len(samples["hourly_cached"]) == len(samples["hourly"])
     assert [m["value"] for m in samples["gas_monthly"]] == ["546.753", "555.090"]
+
+
+async def test_gas_cost_statistic_from_rates(hass: HomeAssistant, api) -> None:
+    """With gas rates set, a gas cost statistic is imported."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=ELEC_ID,
+        data=ENTRY_DATA,
+        version=1,
+        minor_version=2,
+        options={"gas_rates": [{"from": "2026-10", "price": 0.1, "daily": 1.0}]},
+    )
+    calls = await _setup(hass, entry)
+    cost = next(
+        c.args[2]
+        for c in calls
+        if c.args[1]["statistic_id"] == f"{DOMAIN}:gas_consumption_in_dollars_"
+        f"{ICP.lower()}"
+    )
+    # Sep 2025 (30 days), Aug 2026 (31), Sep 2026 (30), all at the first rate.
+    assert [row["sum"] for row in cost] == [60.05, 145.725, 231.234]

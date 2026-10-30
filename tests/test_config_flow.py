@@ -96,3 +96,31 @@ async def test_reauth_rejected(hass: HomeAssistant, api, entry) -> None:
     )
     assert result["errors"] == {"base": "invalid_auth"}
     assert isinstance(api["login"], AsyncMock)
+
+
+async def test_options_gas_rates(hass: HomeAssistant, api, entry) -> None:
+    """Gas rates are kept per month; clearing them removes the gas cost."""
+    entry.add_to_hass(hass)
+    with patch("custom_components.contact_energy.async_setup_entry", return_value=True):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"gas_price": 0.11362, "gas_daily_charge": 2.71}
+        )
+        assert result["type"] is FlowResultType.CREATE_ENTRY
+        rates = entry.options["gas_rates"]
+        assert len(rates) == 1
+        assert rates[0]["price"] == 0.11362
+
+        # A second change in the same month replaces the rate.
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"gas_price": 0.12}
+        )
+        assert [r["price"] for r in entry.options["gas_rates"]] == [0.12]
+        assert entry.options["gas_rates"][0]["daily"] == 0.0
+
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {}
+        )
+        assert entry.options["gas_rates"] == []

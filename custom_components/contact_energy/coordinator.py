@@ -33,6 +33,7 @@ from .const import (
     CONF_CONTRACT_ICP,
     CONF_CONTRACT_ID,
     CONF_FETCH_HISTORY,
+    CONF_GAS_RATES,
     CONF_LEGACY_STATISTIC_IDS,
     CONTRACT_TYPE_GAS,
     CURRENCY,
@@ -44,7 +45,7 @@ from .const import (
     TIMEZONE,
     USAGE_UPDATE_INTERVAL,
 )
-from .usage import PeriodTotals, UsageCache, parse_hourly
+from .usage import PeriodTotals, UsageCache, gas_month_cost, parse_hourly
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -366,16 +367,26 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         if not self.gas_months:
             return
         gas_icp = self.account.data.gas["icp"] if self.account.data.gas else self.icp
-        series = [
-            ("gas", "Gas", UnitOfEnergy.KILO_WATT_HOUR, EnergyConverter.UNIT_CLASS, 0)
+        rates = self.config_entry.options.get(CONF_GAS_RATES, [])
+        starts = sorted(self.gas_months)
+        kwh = [self.gas_months[start][0] for start in starts]
+        # The API has no gas prices (yet); fall back to the user's rates.
+        costs = [
+            cost
+            if (cost := self.gas_months[start][1]) is not None
+            else gas_month_cost(start.date(), value, rates)
+            for start, value in zip(starts, kwh, strict=True)
         ]
-        if any(cost is not None for _, cost in self.gas_months.values()):
-            series.append(("gas_cost", "Gas Cost", CURRENCY, None, 1))
-        for key, label, unit, unit_class, index in series:
+        series = [
+            ("gas", "Gas", UnitOfEnergy.KILO_WATT_HOUR, EnergyConverter.UNIT_CLASS, kwh)
+        ]
+        if any(cost is not None for cost in costs):
+            series.append(("gas_cost", "Gas Cost", CURRENCY, None, costs))
+        for key, label, unit, unit_class, values in series:
             total = 0.0
             rows = []
-            for start in sorted(self.gas_months):
-                total += self.gas_months[start][index] or 0.0
+            for start, value in zip(starts, values, strict=True):
+                total += value or 0.0
                 rows.append(StatisticData(start=start, sum=round(total, 3)))
             async_add_external_statistics(
                 self.hass,

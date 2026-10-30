@@ -16,6 +16,12 @@ CONF_FETCH_HISTORY = "fetch_history"
 # Entries created before 1.1.0 keep the original (un-suffixed) statistic ids so
 # existing Energy dashboard configurations keep working.
 CONF_LEGACY_STATISTIC_IDS = "legacy_statistic_ids"
+# Options: the API has no gas prices, so the gas cost statistic is computed
+# from rates the user enters. CONF_GAS_RATES keeps every rate with the month
+# it applies from, so a price change does not rewrite earlier months.
+CONF_GAS_PRICE = "gas_price"
+CONF_GAS_DAILY_CHARGE = "gas_daily_charge"
+CONF_GAS_RATES = "gas_rates"
 
 CONTRACT_TYPE_ELECTRICITY = 1
 CONTRACT_TYPE_GAS = 2
