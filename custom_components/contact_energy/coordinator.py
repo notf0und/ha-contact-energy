@@ -178,6 +178,7 @@ class UsageData:
     """Usage totals exposed to the sensors."""
 
     period: PeriodTotals
+    previous_period: PeriodTotals | None
     latest_day: PeriodTotals
     gas_last_month: float | None
     gas_last_month_start: date | None
@@ -279,9 +280,12 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
                 self._async_push_statistics()
 
         reading_date = self.account.data.reading_date if self.account.data else None
+        if reading_date and self.cache.add_reading_date(reading_date):
+            self._store.async_delay_save(self.cache.as_dict, 10)
         last_month = max(self.gas_months, default=None)
         return UsageData(
             self.cache.totals_since(reading_date),
+            self.cache.previous_period(reading_date),
             self.cache.totals_since(self.cache.last_day),
             self.gas_months[last_month][0] if last_month else None,
             last_month.date() if last_month else None,

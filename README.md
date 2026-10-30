@@ -50,7 +50,9 @@ Usage is imported as hourly long-term statistics. It is not tied to an entity, s
 Gas usage is only available **per month**, so the whole month appears on the first day of the month in the dashboard. It is in **kWh**, the energy Contact bills you for, not the m³ the meter counts: natural gas carries about 10.5–11 kWh per m³, so e.g. 52 m³ ≈ 555 kWh. A month appears once it has ended.
 
 > [!NOTE]
-> Contact Energy publishes usage 1–3 days late. Right after a meter reading the billing-period sensors (*Usage*, *Usage (free)*, *Total usage*, *Usage cost*) read 0 until the first day of the new period arrives; *Latest day usage* always shows the last day with data. Today's and yesterday's bars stay empty until the data arrives, so look a few days back to see the latest usage. The **Usage data until** sensor shows the latest day available.
+> Contact Energy publishes usage 1–3 days late. Right after a meter reading the billing-period sensors (*Usage*, *Usage (free)*, *Total usage*, *Usage cost*) read 0 until the first day of the new period arrives; *Latest day usage* always shows the last day with data, and the *Previous period* sensors the last complete billing period.
+
+The integration remembers each meter reading date as it changes. Until it has seen two, the previous period's start is estimated as the same day one month before the last reading (`estimated_start: true`). Today's and yesterday's bars stay empty until the data arrives, so look a few days back to see the latest usage. The **Usage data until** sensor shows the latest day available.
 
 History is fetched gradually in the background: about 48 days per hour, newest first, until the start of your account's data. The **Fetch usage now** button fetches the next batch straight away.
 
@@ -63,6 +65,7 @@ History is fetched gradually in the background: about 48 days per hour, newest f
 | Account | Plan | e.g. `Good Nights (Monday - Friday)` |
 | Electricity | Usage, Usage (free), Total usage | kWh since the last meter reading (the billing period), with `period_start` and `data_until` attributes |
 | Electricity | Usage cost | NZD since the last meter reading |
+| Electricity | Previous period usage, Previous period usage (free), Previous period total usage, Previous period cost | The last complete billing period (previous reading date → day before the last reading), with `period_start`, `period_end`, `data_until`, `estimated_start` attributes |
 | Electricity | Latest day usage, Latest day cost | The last day with data (`date`, `paid_kwh`, `free_kwh` attributes) |
 | Electricity | Usage data until | Latest day with usage data |
 | Electricity | Previous reading date, Next reading date | |

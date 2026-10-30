@@ -29,6 +29,15 @@ def _number(value: Any) -> float:
         return 0.0
 
 
+def _same_day_in(year: int, month: int, day: int) -> date:
+    """Return ``day`` of the given month, clamped to the month's length."""
+    while True:
+        try:
+            return date(year, month, day)
+        except ValueError:
+            day -= 1
+
+
 def hours_in_day(day: date) -> int:
     """Return 23, 24 or 25 depending on daylight saving changes."""
     start = datetime.combine(day, time(), TIMEZONE).astimezone(UTC)
@@ -69,6 +78,8 @@ class PeriodTotals:
     free_kwh: float
     cost: float
     last_day: date | None
+    end: date | None = None
+    estimated_start: bool = False
 
     @property
     def total_kwh(self) -> float:
@@ -98,6 +109,8 @@ class UsageCache:
         self.history_cursor: str | None = None
         self.empty_streak = 0
         self.history_done = False
+        # Meter reading dates seen so far: each one starts a billing period.
+        self.reading_dates: set[str] = set()
 
     # Persistence
 
@@ -109,6 +122,7 @@ class UsageCache:
             "history_cursor": self.history_cursor,
             "empty_streak": self.empty_streak,
             "history_done": self.history_done,
+            "reading_dates": sorted(self.reading_dates),
         }
 
     @classmethod
@@ -120,6 +134,7 @@ class UsageCache:
         cache.history_cursor = data.get("history_cursor")
         cache.empty_streak = data.get("empty_streak", 0)
         cache.history_done = data.get("history_done", False)
+        cache.reading_dates = set(data.get("reading_dates", []))
         return cache
 
     @classmethod
@@ -231,15 +246,52 @@ class UsageCache:
         """Return the latest day with data."""
         return date.fromisoformat(max(self.days)) if self.days else None
 
-    def totals_since(self, start: date | None) -> PeriodTotals:
-        """Sum usage from ``start`` (inclusive) to the latest data."""
+    def totals_since(self, start: date | None, end: date | None = None) -> PeriodTotals:
+        """Sum usage from ``start`` to ``end`` (inclusive; open-ended by default)."""
         paid = free = cost = 0.0
+        last_day = None
         if start is not None:
-            for _, hour in self._hours(start.isoformat()):
+            for key, hour in self._hours(start.isoformat()):
+                if end is not None and key > end.isoformat():
+                    break
                 paid += hour[1] - hour[3]
                 free += hour[3]
                 cost += hour[2]
-        return PeriodTotals(start, paid, free, cost, self.last_day)
+                last_day = key
+        return PeriodTotals(
+            start,
+            paid,
+            free,
+            cost,
+            date.fromisoformat(last_day) if last_day else None,
+            end,
+        )
+
+    def add_reading_date(self, reading: date) -> bool:
+        """Remember a meter reading date; return True when it is new."""
+        if reading.isoformat() in self.reading_dates:
+            return False
+        self.reading_dates.add(reading.isoformat())
+        return True
+
+    def previous_period(self, current: date | None) -> PeriodTotals | None:
+        """Totals of the billing period that ended the day before ``current``.
+
+        Its start is the previous reading date seen; before two readings have
+        been seen it is estimated as the same day one month earlier.
+        """
+        if current is None:
+            return None
+        earlier = [d for d in self.reading_dates if d < current.isoformat()]
+        if earlier:
+            start, estimated = date.fromisoformat(max(earlier)), False
+        else:
+            year, month = divmod(current.year * 12 + current.month - 2, 12)
+            month += 1
+            start, estimated = _same_day_in(year, month, current.day), True
+        totals = self.totals_since(start, current - timedelta(days=1))
+        totals.estimated_start = estimated
+        return totals
 
     def statistics(self, first_day: str) -> StatisticsRows:
         """Return cumulative sums for every hour from ``first_day`` onwards."""

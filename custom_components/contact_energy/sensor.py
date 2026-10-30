@@ -64,6 +64,13 @@ def _detail(*keys: str) -> Callable[[AccountData], Any]:
     return value
 
 
+def _previous(data: UsageData, field: str) -> float | None:
+    period = data.previous_period
+    if period is None or period.last_day is None:
+        return None
+    return round(getattr(period, field), 3)
+
+
 def _recent_payments(data: AccountData) -> dict[str, Any]:
     return {
         "recent_payments": [
@@ -216,6 +223,42 @@ USAGE_SENSORS: tuple[UsageSensorDescription, ...] = (
         value_fn=lambda d: round(d.period.cost, 2),
     ),
     UsageSensorDescription(
+        key="previous_period_usage",
+        translation_key="previous_period_usage",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=2,
+        billing_period=False,
+        value_fn=lambda d: _previous(d, "paid_kwh"),
+    ),
+    UsageSensorDescription(
+        key="previous_period_usage_free",
+        translation_key="previous_period_usage_free",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=2,
+        billing_period=False,
+        value_fn=lambda d: _previous(d, "free_kwh"),
+    ),
+    UsageSensorDescription(
+        key="previous_period_total_usage",
+        translation_key="previous_period_total_usage",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=2,
+        billing_period=False,
+        value_fn=lambda d: _previous(d, "total_kwh"),
+    ),
+    UsageSensorDescription(
+        key="previous_period_cost",
+        translation_key="previous_period_cost",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=CURRENCY,
+        suggested_display_precision=2,
+        billing_period=False,
+        value_fn=lambda d: _previous(d, "cost"),
+    ),
+    UsageSensorDescription(
         key="latest_day_usage",
         translation_key="latest_day_usage",
         device_class=SensorDeviceClass.ENERGY,
@@ -242,7 +285,7 @@ USAGE_SENSORS: tuple[UsageSensorDescription, ...] = (
         translation_key="usage_data_date",
         device_class=SensorDeviceClass.DATE,
         billing_period=False,
-        value_fn=lambda d: d.period.last_day,
+        value_fn=lambda d: d.latest_day.last_day,
     ),
 )
 
@@ -351,6 +394,16 @@ class UsageSensor(ContactEnergyEntity[ContactEnergyUsageCoordinator], SensorEnti
         if self.entity_description.key == "gas_usage_last_month":
             month: date | None = data.gas_last_month_start
             return {"month": month.strftime("%Y-%m") if month else None}
+        if self.entity_description.key.startswith("previous_period"):
+            period = data.previous_period
+            if period is None:
+                return None
+            return {
+                "period_start": period.start,
+                "period_end": period.end,
+                "data_until": period.last_day,
+                "estimated_start": period.estimated_start,
+            }
         if self.entity_description.key.startswith("latest_day"):
             return {
                 "date": data.latest_day.last_day,
@@ -361,5 +414,5 @@ class UsageSensor(ContactEnergyEntity[ContactEnergyUsageCoordinator], SensorEnti
             return None
         return {
             "period_start": data.period.start,
-            "data_until": data.period.last_day,
+            "data_until": data.latest_day.last_day,
         }

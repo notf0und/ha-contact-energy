@@ -95,6 +95,18 @@
       "usage_cost": {
         "name": "Usage cost"
       },
+      "previous_period_usage": {
+        "name": "Previous period usage"
+      },
+      "previous_period_usage_free": {
+        "name": "Previous period usage (free)"
+      },
+      "previous_period_total_usage": {
+        "name": "Previous period total usage"
+      },
+      "previous_period_cost": {
+        "name": "Previous period cost"
+      },
       "latest_day_usage": {
         "name": "Latest day usage"
       },

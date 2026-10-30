@@ -49,6 +49,13 @@ async def test_setup_creates_sensors_and_statistics(
     assert usage.attributes["period_start"] == date(2026, 10, 25)
     assert float(usage.state) >= 0
 
+    previous = hass.states.get(
+        "sensor.contact_energy_electricity_previous_period_total_usage"
+    )
+    assert previous.attributes["period_end"] == date(2026, 10, 24)
+    assert previous.attributes["estimated_start"] is True
+    assert float(previous.state) > 0
+
     latest = hass.states.get("sensor.contact_energy_electricity_latest_day_usage")
     assert latest.state == "12.0"
     assert latest.attributes["free_kwh"] == 1.5

@@ -127,3 +127,33 @@ def test_totals_since() -> None:
     assert totals.free_kwh == 3.0
     assert totals.total_kwh == 24.0
     assert totals.last_day == TODAY - timedelta(days=5)
+
+
+def test_previous_period_estimated_then_known() -> None:
+    """The previous period is estimated until two readings were seen."""
+    cache = UsageCache()
+    for offset in range(1, 45):
+        day = TODAY - timedelta(days=offset)
+        cache.store_day(day, parse_hourly(hourly(day), day), TODAY)
+    reading = date(2026, 10, 29)
+    cache.add_reading_date(reading)
+
+    previous = cache.previous_period(reading)
+    assert previous.estimated_start
+    assert (previous.start, previous.end) == (date(2026, 9, 29), date(2026, 10, 28))
+    assert previous.total_kwh == 30 * 12.0
+    assert previous.last_day == date(2026, 10, 28)
+    # The current period starts at the reading.
+    assert cache.totals_since(reading).last_day == reading
+
+    cache.add_reading_date(date(2026, 9, 30))
+    previous = cache.previous_period(reading)
+    assert not previous.estimated_start
+    assert previous.start == date(2026, 9, 30)
+    assert previous.total_kwh == 29 * 12.0
+
+
+def test_previous_period_estimate_clamps_month_end() -> None:
+    """A reading on the 31st estimates the end of the shorter month before."""
+    previous = UsageCache().previous_period(date(2026, 3, 31))
+    assert previous.start == date(2026, 2, 28)
