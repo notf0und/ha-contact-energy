@@ -1,49 +1,41 @@
-"""Constants for the Contact Energy sensors."""
+"""Constants for the Contact Energy integration."""
 
-from typing import Final, final
+from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 DOMAIN = "contact_energy"
-DOMAIN_NAME = "Contact Energy"
+NAME = "Contact Energy"
 
-SENSOR_USAGE_NAME = "Usage"
-SENSOR_SOLD_NAME = "Sold"
-SENSOR_PRICES_NAME = "Prices"
-
-SENSOR_ACCOUNT_BALANCE_NAME = "Account Balance"
-SENSOR_NEXT_BILL_AMOUNT_NAME = "Next Bill Amount"
-SENSOR_NEXT_BILL_DATE_NAME = "Next Bill Date"
-SENSOR_PAYMENT_DUE_NAME = "Payment Due"
-SENSOR_PAYMENT_DUE_DATE_NAME = "Payment Due Date"
-SENSOR_PREVIOUS_READING_DATE_NAME = "Previous Reading Date"
-SENSOR_NEXT_READING_DATE_NAME = "Next Reading Date"
-
+# Contact Energy only supplies New Zealand: every date the API returns is local.
+TIMEZONE = ZoneInfo("Pacific/Auckland")
 
 CONF_ACCOUNT_ID = "account_id"
 CONF_CONTRACT_ID = "contract_id"
 CONF_CONTRACT_ICP = "contract_icp"
-CONF_PRICES = "prices"
-CONF_USAGE = "usage"
-CONF_SOLD = "sold"
-CONF_SOLD_MEASURE = "sold_measure"
-CONF_SOLD_DAILY = "sold_daily"
-CONF_USAGE_DAYS = "usage_days"
-CONF_SHOW_HOURLY = "show_hourly"
-CONF_DATE_FORMAT = "date_format"
-CONF_TIME_FORMAT = "time_format"
-CONF_HOURLY_OFFSET_DAYS = "hourly_offset_days"
+CONF_FETCH_HISTORY = "fetch_history"
+# Entries created before 1.1.0 keep the original (un-suffixed) statistic ids so
+# existing Energy dashboard configurations keep working.
+CONF_LEGACY_STATISTIC_IDS = "legacy_statistic_ids"
 
-MONITORED_CONDITIONS_DEFAULT = [
-    "is_retail_customer",
-    "current_price",
-    "referral_discount_in_kr",
-    "has_unpaid_invoices",
-    "yearly_savings_in_kr",
-    "timezone",
-    "retail_termination_date",
-    "current_day",
-    "next_day",
-    "current_month",
-]
+CONTRACT_TYPE_ELECTRICITY = 1
+CONTRACT_TYPE_GAS = 2
 
-#-----#
-ENTITY_ID_FORMAT: Final = DOMAIN + ".{}"
+ACCOUNT_UPDATE_INTERVAL = timedelta(hours=1)
+USAGE_UPDATE_INTERVAL = timedelta(hours=1)
+GAS_UPDATE_INTERVAL = timedelta(hours=12)
+
+# Hourly usage can only be requested one day at a time and each request takes
+# a few seconds, so history is fetched in batches.
+REQUESTS_PER_UPDATE = 48
+REQUEST_DELAY = 0.2
+# Usage lands 1-3 days late: keep re-fetching recent days until they are complete.
+RECENT_DAYS = 4
+# A day older than this is not re-fetched again, even when hours are missing.
+FINAL_AFTER_DAYS = 7
+# This many empty days in a row while going back in time means the start of
+# the account's history has been reached.
+END_OF_HISTORY_EMPTY_DAYS = 5
+# History kept when "fetch all history" is off (covers a billing period).
+SHORT_HISTORY_DAYS = 35
+
+CURRENCY = "NZD"

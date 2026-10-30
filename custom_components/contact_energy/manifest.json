@@ -1,18 +1,13 @@
 {
-	"domain": "contact_energy",
-	"name": "Contact Energy",
-	"codeowners": [
-		"@notf0und"
-	],
-	"config_flow": true,
-	"dependencies": [
-		"recorder"
-	],
-	"documentation": "https://github.com/notf0und/ha-contact-energy",
-	"iot_class": "cloud_polling",
-	"issue_tracker": "https://github.com/notf0und/ha-contact-energy/issues",
-	"requirements": [
-		"aiohttp>=3.8.0"
-	],
-	"version": "1.0.0"
+  "domain": "contact_energy",
+  "name": "Contact Energy",
+  "codeowners": ["@notf0und"],
+  "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/notf0und/ha-contact-energy",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/notf0und/ha-contact-energy/issues",
+  "requirements": [],
+  "version": "1.1.0"
 }

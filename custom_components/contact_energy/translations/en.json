@@ -3,30 +3,113 @@
     "step": {
       "user": {
         "title": "Connect to Contact Energy",
-        "description": "Enter your Contact Energy account details.",
+        "description": "Sign in with the email and password you use for the Contact Energy app.",
         "data": {
           "email": "Email",
           "password": "Password",
-          "usage_days": "Fetch data for the past X days"
+          "fetch_history": "Fetch all historical usage"
+        },
+        "data_description": {
+          "fetch_history": "Imports every hour of usage the account has into the Energy dashboard. It is fetched gradually in the background (about 48 days per hour). When off, only the last 35 days are fetched."
         }
       },
       "contract": {
-        "title": "Select a Contract",
-        "description": "Choose the electricity contract you want to track.",
+        "title": "Select the electricity connection",
+        "description": "This login has several electricity connections (ICPs). Choose the one to add; add the integration again for the others.",
         "data": {
-          "contract_id": "Contract ID"
+          "contract_id": "Connection"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "Contact Energy rejected the password for {email}.",
+        "data": {
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Contact Energy options",
+        "data": {
+          "fetch_history": "Fetch all historical usage"
+        },
+        "data_description": {
+          "fetch_history": "When off, only the last 35 days are fetched."
         }
       }
     },
     "error": {
       "invalid_auth": "Invalid email or password.",
-      "cannot_connect": "Failed to connect. Please check your internet connection.",
-      "unknown": "An unexpected error occurred.",
-      "invalid_contract": "Selected contract is invalid."
+      "cannot_connect": "Failed to connect to Contact Energy.",
+      "unknown": "Unexpected error."
     },
     "abort": {
-      "already_configured": "This account is already configured."
+      "already_configured": "This electricity connection is already configured.",
+      "no_electricity_contracts": "This login has no electricity connection.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful."
+    }
+  },
+  "entity": {
+    "button": {
+      "backfill": {
+        "name": "Fetch usage now"
+      }
     },
-    "title": "Contact Energy"
+    "sensor": {
+      "account_balance": {
+        "name": "Account balance"
+      },
+      "next_bill_amount": {
+        "name": "Next bill amount"
+      },
+      "next_bill_date": {
+        "name": "Next bill date"
+      },
+      "payment_due": {
+        "name": "Payment due"
+      },
+      "payment_due_date": {
+        "name": "Payment due date"
+      },
+      "plan": {
+        "name": "Plan"
+      },
+      "previous_reading_date": {
+        "name": "Previous reading date"
+      },
+      "next_reading_date": {
+        "name": "Next reading date"
+      },
+      "meter_reading": {
+        "name": "Meter reading"
+      },
+      "usage": {
+        "name": "Usage"
+      },
+      "usage_free": {
+        "name": "Usage (free)"
+      },
+      "total_usage": {
+        "name": "Total usage"
+      },
+      "usage_cost": {
+        "name": "Usage cost"
+      },
+      "usage_data_date": {
+        "name": "Usage data until"
+      },
+      "gas_meter_reading": {
+        "name": "Meter reading"
+      },
+      "gas_meter_reading_date": {
+        "name": "Previous reading date"
+      },
+      "gas_next_reading_date": {
+        "name": "Next reading date"
+      },
+      "gas_usage_last_month": {
+        "name": "Usage last month"
+      }
+    }
   }
 }

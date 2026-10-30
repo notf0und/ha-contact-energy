@@ -1,9 +1,6 @@
 {
-	"name": "Contact Energy",
-	"country": [
-		"NZ"
-	],
-	"hide_default_branch": false,
-	"render_readme": true,
-	"zip_release": false
+  "name": "Contact Energy",
+  "country": ["NZ"],
+  "render_readme": true,
+  "homeassistant": "2026.1.0"
 }
