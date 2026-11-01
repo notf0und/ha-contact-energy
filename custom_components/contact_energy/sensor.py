@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time
+import logging
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -15,10 +16,17 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfEnergy, UnitOfVolume
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ContactEnergyConfigEntry
-from .const import CURRENCY, TIMEZONE
+from .const import (
+    CONF_CONTRACT_ICP,
+    CONTRACT_TYPE_NATURAL_GAS,
+    CURRENCY,
+    DOMAIN,
+    TIMEZONE,
+)
 from .coordinator import (
     AccountData,
     ContactEnergyAccountCoordinator,
@@ -30,6 +38,8 @@ from .coordinator import (
     parse_number,
 )
 from .entity import ContactEnergyEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
 
@@ -311,7 +321,10 @@ async def async_setup_entry(
     """Set up the sensors."""
     account = entry.runtime_data.account
     usage = entry.runtime_data.usage
-    has_gas = account.data.gas is not None
+    gas = account.data.gas
+    has_gas = gas is not None
+    # LPG Reticulated has meter readings but no usage data.
+    has_gas_usage = has_gas and gas.get("contractType") == CONTRACT_TYPE_NATURAL_GAS
 
     entities: list[SensorEntity] = [
         AccountSensor(account, description)
@@ -319,9 +332,23 @@ async def async_setup_entry(
     ]
     entities.extend(
         UsageSensor(usage, account.data, description)
-        for description in USAGE_SENSORS + (GAS_USAGE_SENSORS if has_gas else ())
+        for description in USAGE_SENSORS + (GAS_USAGE_SENSORS if has_gas_usage else ())
     )
     async_add_entities(entities)
+
+    if not has_gas_usage:
+        # Remove the always-unknown sensor 1.1.5 created for LPG connections.
+        registry = er.async_get(hass)
+        icp = entry.data[CONF_CONTRACT_ICP]
+        for description in GAS_USAGE_SENSORS:
+            unique_id = f"{DOMAIN}_{icp}_{description.key}"
+            if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
+                _LOGGER.info(
+                    "Removing %s: the gas connection has no usage data", entity_id
+                )
+                registry.async_remove(entity_id)
+            else:
+                _LOGGER.debug("No %s entity to remove", unique_id)
 
 
 class AccountSensor(ContactEnergyEntity[ContactEnergyAccountCoordinator], SensorEntity):

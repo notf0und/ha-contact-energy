@@ -23,7 +23,8 @@ STATS = "custom_components.contact_energy.coordinator.async_add_external_statist
 
 
 async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> list:
-    entry.add_to_hass(hass)
+    if hass.config_entries.async_get_entry(entry.entry_id) is None:
+        entry.add_to_hass(hass)
     with patch(STATS) as add_stats:
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done(wait_background_tasks=True)
@@ -261,12 +262,24 @@ async def test_lpg_and_broadband_bundle(hass: HomeAssistant, api, entry) -> None
             }
         ],
     }
+    # 1.1.5 created an always-unknown gas usage sensor for LPG.
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    stale = registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{DOMAIN}_{ICP}_gas_usage_last_month",
+        config_entry=entry,
+        suggested_object_id="contact_energy_gas_usage_last_month",
+    )
     await _setup(hass, entry)
 
     assert hass.states.get("sensor.contact_energy_account_plan").state == (
         "Good Nights (Monday - Friday)"
     )
     assert hass.states.get("sensor.contact_energy_gas_meter_reading").state == "8078.0"
+    assert registry.async_get(stale.entity_id) is None
+    assert hass.states.get(stale.entity_id) is None
 
 
 async def test_no_free_statistic_without_free_hours(

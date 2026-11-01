@@ -90,7 +90,7 @@ History is fetched gradually in the background: about 48 days per hour, newest f
 | Gas | Meter reading, Previous reading date, Next reading date | Only with a gas connection |
 | Gas | Usage last month | kWh (energy, not m³) for the last full month — the API has no daily gas data; `month` attribute |
 
-For *LPG Reticulated* (piped LPG) the API returned meter readings but no usage data in testing, so expect no gas usage statistics or *Usage last month* value. Please [report it](#reporting-issues) if yours has usage.
+For *LPG Reticulated* (piped LPG) the API returned meter readings but no usage data in testing, so there are no gas usage statistics and no *Usage last month* sensor. Please [report it](#reporting-issues) if yours has usage.
 
 Account details are refreshed hourly; usage is checked hourly.
 

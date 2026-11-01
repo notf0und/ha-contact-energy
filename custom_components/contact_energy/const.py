@@ -29,7 +29,8 @@ GST_RATE = 0.15
 
 CONTRACT_TYPE_ELECTRICITY = 1
 # Natural gas and LPG Reticulated (piped LPG, meter in m³, no usage data).
-CONTRACT_TYPES_GAS = (2, 3)
+CONTRACT_TYPE_NATURAL_GAS = 2
+CONTRACT_TYPES_GAS = (CONTRACT_TYPE_NATURAL_GAS, 3)
 
 ACCOUNT_UPDATE_INTERVAL = timedelta(hours=1)
 USAGE_UPDATE_INTERVAL = timedelta(hours=1)
