@@ -37,7 +37,9 @@ def contract(
         "icp": icp,
         "meterType": "SMART METER" if contract_type == 1 else "STANDARD METER",
         "contractType": contract_type,
-        "contractTypeLabel": "Electricity" if contract_type == 1 else "Natural Gas",
+        "contractTypeLabel": {1: "Electricity", 2: "Natural Gas"}.get(
+            contract_type, "LPG Reticulated"
+        ),
         "premise": {
             "id": "2000000001",
             "supplyAddress": {"shortForm": "1 Example Street, Auckland 1010"},
@@ -60,11 +62,11 @@ def contract(
     }
 
 
-def accounts(gas: bool = True) -> dict[str, Any]:
+def accounts(gas: bool = True, gas_type: int = 2) -> dict[str, Any]:
     """A /accounts/v2 response."""
     contracts = [contract(ELEC_ID, ICP, 1, "kWH")]
     if gas:
-        contracts.insert(0, contract(GAS_ID, GAS_ICP, 2, "M3"))
+        contracts.insert(0, contract(GAS_ID, GAS_ICP, gas_type, "M3"))
     return {
         "accountsSummary": [{"id": ACCOUNT_ID, "contracts": []}],
         "accountDetail": {

@@ -28,7 +28,8 @@ CONF_INCLUDE_GST = "include_gst"
 GST_RATE = 0.15
 
 CONTRACT_TYPE_ELECTRICITY = 1
-CONTRACT_TYPE_GAS = 2
+# Natural gas and LPG Reticulated (piped LPG, meter in m³, no usage data).
+CONTRACT_TYPES_GAS = (2, 3)
 
 ACCOUNT_UPDATE_INTERVAL = timedelta(hours=1)
 USAGE_UPDATE_INTERVAL = timedelta(hours=1)

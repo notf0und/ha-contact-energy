@@ -9,7 +9,7 @@ Brings your [Contact Energy](https://contact.co.nz) (New Zealand) account into H
 - **Hourly electricity usage and cost in the Energy dashboard**, including the free hours of plans such as *Good Nights*, with all the history your account has.
 - **Billing-period totals**: paid, free and total kWh plus cost since the last meter reading.
 - **Account details**: balance, next bill amount and date, payment due, plan name, meter reading dates.
-- **Gas** (when the account has a gas connection): monthly gas usage in the Energy dashboard, meter reading (with its history), reading dates and last month's usage.
+- **Gas** (when the account has a natural gas or LPG Reticulated connection): monthly gas usage in the Energy dashboard, meter reading (with its history), reading dates and last month's usage.
 
 It uses the same API as the Contact Energy app, signing in with your app email and password.
 
@@ -89,6 +89,8 @@ History is fetched gradually in the background: about 48 days per hour, newest f
 | Electricity | Fetch usage now | Button: fetch the next batch of usage |
 | Gas | Meter reading, Previous reading date, Next reading date | Only with a gas connection |
 | Gas | Usage last month | kWh (energy, not m³) for the last full month — the API has no daily gas data; `month` attribute |
+
+For *LPG Reticulated* (piped LPG) the API returned meter readings but no usage data in testing, so expect no gas usage statistics or *Usage last month* value. Please [report it](#reporting-issues) if yours has usage.
 
 Account details are refreshed hourly; usage is checked hourly.
 

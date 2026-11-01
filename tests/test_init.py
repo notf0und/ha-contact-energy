@@ -235,3 +235,35 @@ async def test_include_gst(hass: HomeAssistant, api) -> None:
     assert sums(calls, "energy_consumption") == sums(plain, "energy_consumption")
     assert float(hass.states.get(cost_entity).state) == round(plain_cost * 1.15, 2)
     assert entry.runtime_data.usage.cache.costs_include_gst is True
+
+
+async def test_lpg_and_broadband_bundle(hass: HomeAssistant, api, entry) -> None:
+    """LPG Reticulated counts as gas; a broadband service doesn't rename the plan."""
+    from .conftest import accounts
+
+    api["accounts"].side_effect = lambda *_: accounts(gas_type=3)
+    services = PLANS["premises"][0]["services"]
+    api["plans"].return_value = {
+        **PLANS,
+        "premises": [
+            {
+                **PLANS["premises"][0],
+                "services": [
+                    *services,
+                    {
+                        "serviceType": "BROADBAND",
+                        "contract": {"contractId": ELEC_ID},
+                        "planDetails": {
+                            "externalPlanDescription": "Bundle with Elec + Gas $80"
+                        },
+                    },
+                ],
+            }
+        ],
+    }
+    await _setup(hass, entry)
+
+    assert hass.states.get("sensor.contact_energy_account_plan").state == (
+        "Good Nights (Monday - Friday)"
+    )
+    assert hass.states.get("sensor.contact_energy_gas_meter_reading").state == "8078.0"

@@ -36,7 +36,7 @@ from .const import (
     CONF_GAS_RATES,
     CONF_INCLUDE_GST,
     CONF_LEGACY_STATISTIC_IDS,
-    CONTRACT_TYPE_GAS,
+    CONTRACT_TYPES_GAS,
     CURRENCY,
     DOMAIN,
     GAS_HISTORY_YEARS,
@@ -149,7 +149,7 @@ class ContactEnergyAccountCoordinator(DataUpdateCoordinator[AccountData]):
             )
         premise = electricity.get("premise", {}).get("id")
         gas_contracts = [
-            c for c in contracts if c.get("contractType") == CONTRACT_TYPE_GAS
+            c for c in contracts if c.get("contractType") in CONTRACT_TYPES_GAS
         ]
         gas = next(
             (c for c in gas_contracts if c.get("premise", {}).get("id") == premise),
@@ -164,14 +164,22 @@ class ContactEnergyAccountCoordinator(DataUpdateCoordinator[AccountData]):
         except ContactEnergyError as err:
             _LOGGER.debug("Could not fetch plan details: %s", err)
         else:
-            plans = {
-                str(service["contract"]["contractId"]): service["planDetails"].get(
-                    "externalPlanDescription"
-                )
-                for premise_details in plan_details.get("premises", [])
-                for service in premise_details.get("services", [])
-                if service.get("contract") and service.get("planDetails")
-            }
+            plans = {}
+            for premise_details in plan_details.get("premises", []):
+                for service in premise_details.get("services", []):
+                    if not service.get("contract") or not service.get("planDetails"):
+                        continue
+                    contract_id = str(service["contract"]["contractId"])
+                    # A broadband bundle shares the electricity contract id:
+                    # the energy plan wins.
+                    if contract_id in plans and service.get("serviceType") not in (
+                        "ELEC",
+                        "GAS",
+                    ):
+                        continue
+                    plans[contract_id] = service["planDetails"].get(
+                        "externalPlanDescription"
+                    )
 
         return AccountData(detail, electricity, gas, plans)
 
