@@ -267,3 +267,25 @@ async def test_lpg_and_broadband_bundle(hass: HomeAssistant, api, entry) -> None
         "Good Nights (Monday - Friday)"
     )
     assert hass.states.get("sensor.contact_energy_gas_meter_reading").state == "8078.0"
+
+
+async def test_no_free_statistic_without_free_hours(
+    hass: HomeAssistant, api, entry
+) -> None:
+    """Plans without free hours don't get an all-zero free electricity statistic."""
+    from .conftest import fake_usage, hourly
+
+    async def no_free(contract_id, account_id, interval, start, end):
+        points = await fake_usage(contract_id, account_id, interval, start, end)
+        if interval != "hourly" or not points:
+            return points
+        return hourly(start, free_from=24)
+
+    api["usage"].side_effect = no_free
+    calls = await _setup(hass, entry)
+
+    ids = {call.args[1]["statistic_id"] for call in calls}
+    suffix = ICP.lower()
+    assert f"{DOMAIN}:energy_consumption_{suffix}" in ids
+    assert f"{DOMAIN}:energy_consumption_in_dollars_{suffix}" in ids
+    assert f"{DOMAIN}:free_energy_consumption_{suffix}" not in ids

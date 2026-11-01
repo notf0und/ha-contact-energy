@@ -46,7 +46,7 @@ Usage is imported as hourly long-term statistics. It is not tied to an entity, s
 | Statistic | Use as |
 |-----------|--------|
 | `Contact Energy - Electricity (<ICP>)` | Grid consumption; for costs choose *Use an entity tracking the total costs* → `Contact Energy - Electricity Cost (<ICP>)` |
-| `Contact Energy - Free Electricity (<ICP>)` | A second grid consumption (free hours, no cost) |
+| `Contact Energy - Free Electricity (<ICP>)` | A second grid consumption (free hours, no cost). Only created for plans with free hours, once free usage appears |
 | `Contact Energy - Gas (<gas ICP>)` | **Gas consumption** section → Add gas source; for costs choose *Use an entity tracking the total costs* → `Contact Energy - Gas Cost (<gas ICP>)` (needs gas rates, below) |
 
 Gas usage is only available **per month**, so the whole month appears on the first day of the month in the dashboard. It is in **kWh**, the energy Contact bills you for, not the m³ the meter counts: natural gas carries about 10.5–11 kWh per m³, so e.g. 52 m³ ≈ 555 kWh. A month appears once it has ended.

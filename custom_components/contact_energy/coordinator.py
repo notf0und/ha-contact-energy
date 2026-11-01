@@ -443,7 +443,7 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         _LOGGER.debug(
             "Updating statistics from %s (%d hours)", first_day, len(rows.starts)
         )
-        for key, label, unit, unit_class, sums in (
+        series = [
             (
                 "paid",
                 "Electricity",
@@ -458,14 +458,21 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
                 None,
                 [round(cost * self.cost_factor, 3) for cost in rows.cost],
             ),
-            (
-                "free",
-                "Free Electricity",
-                UnitOfEnergy.KILO_WATT_HOUR,
-                EnergyConverter.UNIT_CLASS,
-                rows.free_kwh,
-            ),
-        ):
+        ]
+        # Plans without free hours don't get an all-zero free statistic. The
+        # sums are cumulative from the first cached day, so once free usage
+        # shows up the statistic still starts with the right running total.
+        if rows.free_kwh[-1] > 0:
+            series.append(
+                (
+                    "free",
+                    "Free Electricity",
+                    UnitOfEnergy.KILO_WATT_HOUR,
+                    EnergyConverter.UNIT_CLASS,
+                    rows.free_kwh,
+                )
+            )
+        for key, label, unit, unit_class, sums in series:
             async_add_external_statistics(
                 self.hass,
                 StatisticMetaData(
