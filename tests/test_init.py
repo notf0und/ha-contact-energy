@@ -289,3 +289,22 @@ async def test_no_free_statistic_without_free_hours(
     assert f"{DOMAIN}:energy_consumption_{suffix}" in ids
     assert f"{DOMAIN}:energy_consumption_in_dollars_{suffix}" in ids
     assert f"{DOMAIN}:free_energy_consumption_{suffix}" not in ids
+
+
+async def test_deleted_statistic_is_reimported(hass: HomeAssistant, api, entry) -> None:
+    """A statistic deleted from the recorder is re-imported on the next start."""
+    first = await _setup(hass, entry)
+    paid_id = f"{DOMAIN}:energy_consumption_{ICP.lower()}"
+    full = next(len(c.args[2]) for c in first if c.args[1]["statistic_id"] == paid_id)
+
+    # The patched importer never wrote anything, so on reload every statistic
+    # is "missing" and the whole history is imported again.
+    with patch(STATS) as add_stats:
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    again = next(
+        len(c.args[2])
+        for c in add_stats.call_args_list
+        if c.args[1]["statistic_id"] == paid_id
+    )
+    assert again == full

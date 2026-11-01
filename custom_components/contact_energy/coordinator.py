@@ -14,7 +14,10 @@ from homeassistant.components.recorder.models import (
     StatisticMeanType,
     StatisticMetaData,
 )
-from homeassistant.components.recorder.statistics import async_add_external_statistics
+from homeassistant.components.recorder.statistics import (
+    async_add_external_statistics,
+    async_list_statistic_ids,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
@@ -254,10 +257,31 @@ class ContactEnergyUsageCoordinator(DataUpdateCoordinator[UsageData]):
         return 1 + GST_RATE if self.include_gst else 1.0
 
     async def async_load(self) -> None:
-        """Load the cache and re-import the costs if the GST option changed."""
+        """Load the cache and decide whether to re-import all statistics.
+
+        Everything is re-imported when the GST option changed or a statistic
+        was deleted (e.g. in Developer tools → Statistics).
+        """
         await self._async_load_cache()
-        if self.cache.days and self.cache.costs_include_gst != self.include_gst:
+        if not self.cache.days:
+            return
+        if (
+            self.cache.costs_include_gst != self.include_gst
+            or await self._async_statistics_missing()
+        ):
             self._pending_statistics = min(self.cache.days)
+
+    async def _async_statistics_missing(self) -> bool:
+        expected = {self.statistic_ids["paid"], self.statistic_ids["cost"]}
+        if any(hour[3] > 0 for hours in self.cache.days.values() for hour in hours):
+            expected.add(self.statistic_ids["free"])
+        existing = {
+            item["statistic_id"]
+            for item in await async_list_statistic_ids(self.hass, expected)
+        }
+        if missing := expected - existing:
+            _LOGGER.info("Re-importing usage history for %s", sorted(missing))
+        return bool(missing)
 
     async def _async_load_cache(self) -> None:
         """Load the cache, migrating the 1.0.x sensor attributes if needed."""
